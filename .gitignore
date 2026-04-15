@@ -1,0 +1,23 @@
+# 環境変数
+.env
+**/.env
+frontend/.env.local
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# データ
+backend/data/
+*.zip
+
+# Node.js
+frontend/node_modules/
+frontend/.next/
+
+# IDE
+.DS_Store
+.vscode/
