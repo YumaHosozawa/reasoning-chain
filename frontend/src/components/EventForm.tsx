@@ -8,6 +8,7 @@ interface Props {
     chain_only: boolean;
     top_n: number;
     score_threshold: number;
+    strategy: string;
   }) => void;
   loading: boolean;
 }
@@ -17,11 +18,12 @@ export default function EventForm({ onSubmit, loading }: Props) {
   const [chainOnly, setChainOnly] = useState(false);
   const [topN, setTopN] = useState(10);
   const [threshold, setThreshold] = useState(0.6);
+  const [strategy, setStrategy] = useState("default");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!event.trim()) return;
-    onSubmit({ event: event.trim(), chain_only: chainOnly, top_n: topN, score_threshold: threshold });
+    onSubmit({ event: event.trim(), chain_only: chainOnly, top_n: topN, score_threshold: threshold, strategy });
   };
 
   return (
@@ -77,6 +79,20 @@ export default function EventForm({ onSubmit, loading }: Props) {
             {[0.4, 0.5, 0.6, 0.7, 0.8].map((v) => (
               <option key={v} value={v}>{v}</option>
             ))}
+          </select>
+        </label>
+
+        <label className="flex items-center gap-2">
+          <span className="text-gray-600">マッチング戦略</span>
+          <select
+            value={strategy}
+            onChange={(e) => setStrategy(e.target.value)}
+            className="rounded border border-gray-300 px-2 py-1 text-sm"
+            disabled={loading}
+          >
+            <option value="default">デフォルト</option>
+            <option value="small_cap_first">小型株優先</option>
+            <option value="diversity">多様性重視</option>
           </select>
         </label>
       </div>

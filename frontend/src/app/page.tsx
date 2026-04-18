@@ -20,6 +20,7 @@ export default function Home() {
     chain_only: boolean;
     top_n: number;
     score_threshold: number;
+    strategy: string;
   }) => {
     setLoading(true);
     setError(null);

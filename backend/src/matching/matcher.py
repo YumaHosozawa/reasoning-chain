@@ -35,6 +35,7 @@ from src.models import (
 )
 from src.matching.embedder import Embedder
 from src.matching.vector_store import VectorStore
+from src.matching.strategy import MatchingStrategy, get_strategy
 from src.chain.prompt_templates import (
     RELEVANCE_SCORING_SYSTEM,
     RELEVANCE_SCORING_USER,
@@ -63,6 +64,7 @@ class CompanyMatcher:
         score_threshold: float | None = None,
         use_redis_cache: bool = True,
         db_session_factory: Any | None = None,
+        strategy: str | None = None,
     ) -> None:
         self._embedder = embedder or Embedder()
         self._vector_store = vector_store or VectorStore()
@@ -74,7 +76,11 @@ class CompanyMatcher:
         self._top_k_segments = top_k_segments or int(
             os.environ.get("TOP_K_SEGMENTS", "30")
         )
-        self._max_per_industry = max_per_industry or int(
+        strategy_name = strategy or os.environ.get("MATCHING_STRATEGY", "default")
+        self._strategy: MatchingStrategy = get_strategy(strategy_name)
+        # 戦略固有の業種キャップがあればそちらを優先
+        strategy_cap = self._strategy.max_per_industry
+        self._max_per_industry = strategy_cap or max_per_industry or int(
             os.environ.get("MAX_PER_INDUSTRY", "8")
         )
         self._threshold = score_threshold or float(
@@ -175,7 +181,10 @@ class CompanyMatcher:
         if not hits:
             return []
 
-        # Step 3: 業種多様性キャップ
+        # Step 3: 戦略によるリランク
+        hits = self._strategy.rerank(hits)
+
+        # Step 3.5: 業種多様性キャップ
         hits = self._cap_per_industry(hits)
 
         # Step 4: 企業コンテキストのバッチ取得
