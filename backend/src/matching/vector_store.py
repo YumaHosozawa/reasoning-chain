@@ -107,6 +107,7 @@ class VectorStore:
                 payload={
                     "company_code": profile.company_code,
                     "company_name": profile.company_name,
+                    "industry_code": profile.industry_code,
                     "segment_name": seg.name,
                     "revenue_ratio": seg.revenue_ratio,
                     "keywords": seg.keywords,

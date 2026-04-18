@@ -36,6 +36,7 @@ export interface CompanyMatch {
   time_horizon?: TimeHorizon | null;
   prediction_window_days?: number | null;
   probability?: number | null;
+  company_context?: string | null;
 }
 
 export interface ReliabilityBin {

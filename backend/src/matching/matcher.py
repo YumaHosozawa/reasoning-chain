@@ -11,7 +11,8 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-from typing import Sequence
+from collections import defaultdict
+from typing import Any, Sequence
 
 import anthropic
 import redis
@@ -57,19 +58,29 @@ class CompanyMatcher:
         vector_store: VectorStore | None = None,
         company_profiles: dict[str, CompanyProfile] | None = None,
         top_k_per_impact: int | None = None,
+        top_k_segments: int | None = None,
+        max_per_industry: int | None = None,
         score_threshold: float | None = None,
         use_redis_cache: bool = True,
+        db_session_factory: Any | None = None,
     ) -> None:
         self._embedder = embedder or Embedder()
         self._vector_store = vector_store or VectorStore()
         # 証券コード → CompanyProfile の辞書（LLMスコアリング用）
         self._profiles: dict[str, CompanyProfile] = company_profiles or {}
         self._top_k = top_k_per_impact or int(
-            os.environ.get("TOP_K_PER_IMPACT", "20")
+            os.environ.get("TOP_K_PER_IMPACT", "50")
+        )
+        self._top_k_segments = top_k_segments or int(
+            os.environ.get("TOP_K_SEGMENTS", "30")
+        )
+        self._max_per_industry = max_per_industry or int(
+            os.environ.get("MAX_PER_INDUSTRY", "8")
         )
         self._threshold = score_threshold or float(
             os.environ.get("SCORE_THRESHOLD", "0.6")
         )
+        self._db_factory = db_session_factory
         self._llm = anthropic.Anthropic(
             api_key=os.environ.get("ANTHROPIC_API_KEY")
         )
@@ -140,42 +151,141 @@ class CompanyMatcher:
         """
         影響ノード1件に対するマッチングフロー:
           1. 影響テキストをベクトル化
-          2. ベクトルDB で top_k 検索
-          3. LLM スコアリングを並列実行
-          4. final_score 計算 → 閾値フィルタリング
+          2. 企業全体 + セグメント単位のベクトル検索 → union
+          3. 業種多様性キャップ
+          4. LLM スコアリングを並列実行
+          5. final_score 計算 → 閾値フィルタリング
         """
         # Step 1: 埋め込みベクトル生成
         impact_vector = self._embedder.embed_impact(
             impact.description, impact.keywords
         )
 
-        # Step 2: ベクトル検索
-        hits = self._vector_store.search(
+        # Step 2: 企業全体 + セグメント単位の二段検索
+        hits_full = self._vector_store.search(
             query_vector=impact_vector,
             top_k=self._top_k,
         )
+        hits_seg = self._vector_store.search_segments(
+            query_vector=impact_vector,
+            top_k=self._top_k_segments,
+        )
+        hits = self._merge_hits(hits_full, hits_seg)
 
         if not hits:
             return []
 
-        # Step 3: LLM スコアリングを並列実行
+        # Step 3: 業種多様性キャップ
+        hits = self._cap_per_industry(hits)
+
+        # Step 4: 企業コンテキストのバッチ取得
+        company_codes = [h["company_code"] for h in hits]
+        context_map = self._load_contexts_batch(company_codes)
+
+        # Step 5: LLM スコアリングを並列実行
         scoring_tasks = [
-            self._score_company_async(impact, hit.payload, hit.score)
+            self._score_company_async(
+                impact,
+                hit,
+                hit["vector_score"],
+                company_context=context_map.get(hit["company_code"], ""),
+            )
             for hit in hits
-            if hit.payload
         ]
         scored = await asyncio.gather(*scoring_tasks)
 
-        # Step 4: 閾値フィルタリング
+        # Step 6: 閾値フィルタリング
         results = [r for r in scored if r is not None and r.final_score >= self._threshold]
         results.sort(key=lambda r: r.final_score, reverse=True)
         return results
+
+    def _merge_hits(
+        self,
+        hits_full: list,
+        hits_seg: list,
+    ) -> list[dict]:
+        """
+        企業全体検索とセグメント検索の結果を company_code ベースで union する。
+        重複はスコアの max を採用。
+        """
+        merged: dict[str, dict] = {}
+
+        for hit in hits_full:
+            if not hit.payload:
+                continue
+            code = hit.payload.get("company_code", "")
+            if not code:
+                continue
+            merged[code] = {
+                "company_code": code,
+                "company_name": hit.payload.get("company_name", ""),
+                "industry_code": hit.payload.get("industry_code", ""),
+                "vector_score": hit.score,
+                "matched_segment_name": None,
+            }
+
+        for hit in hits_seg:
+            if not hit.payload:
+                continue
+            code = hit.payload.get("company_code", "")
+            if not code:
+                continue
+            if code in merged:
+                if hit.score > merged[code]["vector_score"]:
+                    merged[code]["vector_score"] = hit.score
+                    merged[code]["matched_segment_name"] = hit.payload.get("segment_name")
+            else:
+                merged[code] = {
+                    "company_code": code,
+                    "company_name": hit.payload.get("company_name", ""),
+                    "industry_code": hit.payload.get("industry_code", ""),
+                    "vector_score": hit.score,
+                    "matched_segment_name": hit.payload.get("segment_name"),
+                }
+
+        return list(merged.values())
+
+    def _cap_per_industry(self, hits: list[dict]) -> list[dict]:
+        """同一業種コードの企業を上位 max_per_industry 件に制限し、多様性を確保する。"""
+        by_industry: dict[str, list[dict]] = defaultdict(list)
+        for h in hits:
+            by_industry[h.get("industry_code", "")].append(h)
+
+        capped: list[dict] = []
+        for _code, group in by_industry.items():
+            group.sort(key=lambda x: x["vector_score"], reverse=True)
+            capped.extend(group[: self._max_per_industry])
+        return capped
+
+    def _load_contexts_batch(self, company_codes: list[str]) -> dict[str, str]:
+        """企業コンテキストをバッチ取得してフォーマット済みテキストの dict を返す。"""
+        if not self._db_factory or not company_codes:
+            return {}
+        try:
+            from backend.db.crud import get_contexts_batch
+
+            session = self._db_factory()
+            try:
+                batch = get_contexts_batch(session, company_codes)
+                result: dict[str, str] = {}
+                for code, records in batch.items():
+                    lines = []
+                    for r in records[:5]:
+                        lines.append(f"・{r.published_date} {r.title}: {r.summary}")
+                    if lines:
+                        result[code] = "\n".join(lines)
+                return result
+            finally:
+                session.close()
+        except Exception:
+            return {}
 
     async def _score_company_async(
         self,
         impact: ImpactNode,
         payload: dict,
         vector_similarity: float,
+        company_context: str = "",
     ) -> CompanyMatchResult | None:
         """
         1企業の LLMスコアリングを実行し CompanyMatchResult を返す。
@@ -203,6 +313,7 @@ class CompanyMatcher:
                 company_code=company_code,
                 business_description=biz_desc,
                 segments_summary=segments_summary,
+                company_context=company_context,
             )
             llm_score = llm_result.get("score", 0.0)
             reason = llm_result.get("reason", "")
@@ -256,6 +367,7 @@ class CompanyMatcher:
             time_horizon=impact.time_horizon,
             prediction_window_days=prediction_window_days,
             probability=impact.probability,
+            company_context=company_context or None,
         )
 
     @retry(
@@ -271,6 +383,7 @@ class CompanyMatcher:
         company_code: str,
         business_description: str,
         segments_summary: str,
+        company_context: str = "",
     ) -> dict:
         """Haiku API を呼び出してスコアリングJSONを取得する"""
         async_client = anthropic.AsyncAnthropic(
@@ -292,6 +405,7 @@ class CompanyMatcher:
                         company_code=company_code,
                         business_description=business_description,
                         segments_summary=segments_summary,
+                        company_context=company_context or "最近の情報なし",
                     ),
                 }
             ],
