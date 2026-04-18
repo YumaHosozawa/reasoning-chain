@@ -176,3 +176,66 @@ export async function runValidationSweep(limit?: number): Promise<SweepResponse>
   if (!res.ok) throw new Error("検証の実行に失敗しました");
   return res.json();
 }
+
+// ---------------------------------------------------------------------------
+// Backtest
+// ---------------------------------------------------------------------------
+
+export interface PresetEvent {
+  name: string;
+  event_date: string;
+  description: string;
+  ground_truth_sectors_positive: string[];
+  ground_truth_sectors_negative: string[];
+}
+
+export interface LevelAccuracy {
+  level: number;
+  precision: number;
+  recall: number;
+  f1: number;
+}
+
+export interface BacktestResult {
+  event: string;
+  event_date: string;
+  chain_precision: number;
+  chain_recall: number;
+  chain_f1: number;
+  positive_hit_rate: number;
+  negative_hit_rate: number;
+  top10_return: number;
+  ground_truth_window: number;
+  level_accuracy: LevelAccuracy[];
+}
+
+export async function fetchPresetEvents(): Promise<PresetEvent[]> {
+  const res = await fetch(`${BASE}/api/backtest/events`);
+  if (!res.ok) throw new Error("プリセットイベントの取得に失敗しました");
+  return res.json();
+}
+
+export async function runBacktestPreset(
+  name: string,
+  window = 30,
+): Promise<BacktestResult> {
+  const res = await fetch(`${BASE}/api/backtest/run-preset`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, ground_truth_window: window }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail ?? "バックテスト実行エラー");
+  }
+  return res.json();
+}
+
+export async function runBacktestAll(window = 30): Promise<BacktestResult[]> {
+  const res = await fetch(
+    `${BASE}/api/backtest/run-all?ground_truth_window=${window}`,
+    { method: "POST" },
+  );
+  if (!res.ok) throw new Error("一括バックテスト実行エラー");
+  return res.json();
+}
