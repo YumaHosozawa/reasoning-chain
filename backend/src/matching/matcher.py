@@ -69,10 +69,16 @@ class CompanyMatcher:
         # 証券コード → CompanyProfile の辞書（LLMスコアリング用）
         self._profiles: dict[str, CompanyProfile] = company_profiles or {}
         self._top_k = top_k_per_impact or int(
-            os.environ.get("TOP_K_PER_IMPACT", "50")
+            os.environ.get("TOP_K_PER_IMPACT", "100")
         )
         self._top_k_segments = top_k_segments or int(
-            os.environ.get("TOP_K_SEGMENTS", "30")
+            os.environ.get("TOP_K_SEGMENTS", "60")
+        )
+        self._max_llm_candidates = int(
+            os.environ.get("MAX_LLM_CANDIDATES", "80")
+        )
+        self._vector_score_threshold = float(
+            os.environ.get("VECTOR_SCORE_THRESHOLD", "0.1")
         )
         self._max_per_industry = max_per_industry or int(
             os.environ.get("MAX_PER_INDUSTRY", "8")
@@ -165,10 +171,12 @@ class CompanyMatcher:
         hits_full = self._vector_store.search(
             query_vector=impact_vector,
             top_k=self._top_k,
+            score_threshold=self._vector_score_threshold,
         )
         hits_seg = self._vector_store.search_segments(
             query_vector=impact_vector,
             top_k=self._top_k_segments,
+            score_threshold=self._vector_score_threshold,
         )
         hits = self._merge_hits(hits_full, hits_seg)
 
@@ -177,6 +185,9 @@ class CompanyMatcher:
 
         # Step 3: 業種多様性キャップ
         hits = self._cap_per_industry(hits)
+
+        # Step 3.5: LLM コスト制御のためのプリフィルタ
+        hits = self._prefilter(hits)
 
         # Step 4: 企業コンテキストのバッチ取得
         company_codes = [h["company_code"] for h in hits]
@@ -256,6 +267,16 @@ class CompanyMatcher:
             group.sort(key=lambda x: x["vector_score"], reverse=True)
             capped.extend(group[: self._max_per_industry])
         return capped
+
+    def _prefilter(self, hits: list[dict]) -> list[dict]:
+        """
+        候補数が _max_llm_candidates を超える場合、
+        ベクトルスコア上位に絞って LLM コール数を制御する。
+        """
+        if len(hits) <= self._max_llm_candidates:
+            return hits
+        hits.sort(key=lambda x: x["vector_score"], reverse=True)
+        return hits[: self._max_llm_candidates]
 
     def _load_contexts_batch(self, company_codes: list[str]) -> dict[str, str]:
         """企業コンテキストをバッチ取得してフォーマット済みテキストの dict を返す。"""
