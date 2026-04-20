@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 class AnalyzeRequest(BaseModel):
     event: str = Field(..., min_length=5, max_length=1000, description="マクロ経済イベントの説明")
     max_levels: int = Field(default=4, ge=1, le=4)
-    top_n: int = Field(default=10, ge=1, le=50)
+    top_n: int = Field(default=30, ge=1, le=100)
     score_threshold: float = Field(default=0.6, ge=0.0, le=1.0)
     chain_only: bool = Field(default=False, description="推論チェーン生成のみ（企業マッチングをスキップ）")
 
