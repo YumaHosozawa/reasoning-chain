@@ -8,6 +8,7 @@ import {
   fetchCalibrationSummary,
   runValidationSweep,
   type CalibrationSummary,
+  type HorizonLevelCross,
 } from "@/lib/api";
 
 const HORIZON_OPTIONS: Array<{ value: string; label: string }> = [
@@ -232,6 +233,57 @@ export default function CalibrationPage() {
                 </table>
               )}
             </section>
+
+            {/* MAE by impact level */}
+            <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+              <h2 className="text-sm font-semibold text-gray-700 mb-3">
+                影響レベル別 精度
+              </h2>
+              {summary.mae_by_level.length === 0 ? (
+                <p className="text-xs text-gray-400">該当データなし</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="text-xs text-gray-400 uppercase tracking-wide">
+                    <tr>
+                      <th className="text-left font-normal py-1">レベル</th>
+                      <th className="text-right font-normal py-1">件数</th>
+                      <th className="text-right font-normal py-1">MAE</th>
+                      <th className="text-right font-normal py-1">Brier</th>
+                      <th className="text-right font-normal py-1">Coverage</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {summary.mae_by_level.map((l) => (
+                      <tr key={l.impact_level}>
+                        <td className="py-1.5">{l.impact_level}次影響</td>
+                        <td className="py-1.5 text-right tabular-nums">{l.count}</td>
+                        <td className="py-1.5 text-right tabular-nums font-mono">
+                          {fmtPct(l.mae_return)}
+                        </td>
+                        <td className="py-1.5 text-right tabular-nums font-mono">
+                          {fmtNum(l.brier_score)}
+                        </td>
+                        <td className="py-1.5 text-right tabular-nums font-mono">
+                          {fmtPct(l.coverage_rate)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </section>
+
+            {/* Horizon × Level cross heatmap */}
+            <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+              <h2 className="text-sm font-semibold text-gray-700 mb-3">
+                時間軸 × 影響レベル MAE ヒートマップ
+              </h2>
+              {summary.horizon_level_cross.length === 0 ? (
+                <p className="text-xs text-gray-400">該当データなし</p>
+              ) : (
+                <CrossHeatmap data={summary.horizon_level_cross} />
+              )}
+            </section>
           </>
         )}
       </main>
@@ -253,6 +305,83 @@ function KpiCard({
       <p className="text-xs text-gray-500">{title}</p>
       <p className="text-xl font-bold text-gray-900 mt-1 tabular-nums">{value}</p>
       {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+    </div>
+  );
+}
+
+const LEVEL_LABEL: Record<number, string> = {
+  1: "1次",
+  2: "2次",
+  3: "3次",
+  4: "4次",
+};
+
+function CrossHeatmap({ data }: { data: HorizonLevelCross[] }) {
+  const horizons = [...new Set(data.map((d) => d.time_horizon))].sort();
+  const levels = [...new Set(data.map((d) => d.impact_level))].sort();
+
+  const lookup = new Map<string, HorizonLevelCross>();
+  for (const d of data) {
+    lookup.set(`${d.time_horizon}:${d.impact_level}`, d);
+  }
+
+  const maxMae = Math.max(...data.map((d) => d.mae_return), 0.01);
+
+  function cellColor(mae: number): string {
+    const ratio = Math.min(mae / maxMae, 1);
+    if (ratio < 0.33) return "bg-emerald-100 text-emerald-800";
+    if (ratio < 0.66) return "bg-yellow-100 text-yellow-800";
+    return "bg-red-100 text-red-800";
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="text-sm">
+        <thead>
+          <tr>
+            <th className="text-left text-xs text-gray-400 font-normal px-2 py-1" />
+            {levels.map((l) => (
+              <th
+                key={l}
+                className="text-center text-xs text-gray-400 font-normal px-3 py-1"
+              >
+                {LEVEL_LABEL[l] ?? `${l}次`}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {horizons.map((h) => (
+            <tr key={h}>
+              <td className="text-xs text-gray-600 px-2 py-1 whitespace-nowrap">
+                {HORIZON_LABEL[h] ?? h}
+              </td>
+              {levels.map((l) => {
+                const cell = lookup.get(`${h}:${l}`);
+                if (!cell) {
+                  return (
+                    <td
+                      key={l}
+                      className="text-center text-xs text-gray-300 px-3 py-1.5"
+                    >
+                      —
+                    </td>
+                  );
+                }
+                return (
+                  <td
+                    key={l}
+                    className={`text-center text-xs font-mono tabular-nums px-3 py-1.5 rounded ${cellColor(cell.mae_return)}`}
+                    title={`n=${cell.count}`}
+                  >
+                    {(cell.mae_return * 100).toFixed(1)}%
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

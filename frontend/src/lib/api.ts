@@ -53,6 +53,21 @@ export interface HorizonMAE {
   count: number;
 }
 
+export interface LevelMAE {
+  impact_level: number;
+  mae_return: number;
+  brier_score: number | null;
+  coverage_rate: number | null;
+  count: number;
+}
+
+export interface HorizonLevelCross {
+  time_horizon: string;
+  impact_level: number;
+  mae_return: number;
+  count: number;
+}
+
 export interface CalibrationSummary {
   validated_count: number;
   pending_count: number;
@@ -61,6 +76,8 @@ export interface CalibrationSummary {
   rolling_brier: number | null;
   reliability_bins: ReliabilityBin[];
   mae_by_horizon: HorizonMAE[];
+  mae_by_level: LevelMAE[];
+  horizon_level_cross: HorizonLevelCross[];
 }
 
 export interface SweepResponse {
