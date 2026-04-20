@@ -14,6 +14,7 @@ from backend.api.routes.analyze import router as analyze_router
 from backend.api.routes.results import router as results_router
 from backend.api.routes.export import router as export_router
 from backend.api.routes.validation import router as validation_router
+from backend.api.routes.backtest import router as backtest_router
 
 
 @asynccontextmanager
@@ -42,6 +43,7 @@ def create_app() -> FastAPI:
     app.include_router(results_router)
     app.include_router(export_router)
     app.include_router(validation_router)
+    app.include_router(backtest_router)
 
     return app
 

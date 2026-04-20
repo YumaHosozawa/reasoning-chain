@@ -52,6 +52,55 @@ BACKTEST_EVENTS: list[dict] = [
         "ground_truth_sectors_positive": ["半導体検査装置（代替需要）", "日本国内向け半導体製造"],
         "ground_truth_sectors_negative": ["中国向け半導体装置メーカー", "中国向け素材メーカー"],
     },
+    {
+        "name": "トランプ関税第1弾（対中25%）",
+        "event_date": "2018-07-06",
+        "description": "トランプ政権が中国からの340億ドル相当の輸入品に25%の追加関税を発動した。",
+        "ground_truth_sectors_positive": ["国内回帰製造業", "防衛"],
+        "ground_truth_sectors_negative": ["自動車部品", "電子部品（中国依存）"],
+    },
+    {
+        "name": "トランプ相互関税（2025年）",
+        "event_date": "2025-04-02",
+        "description": "トランプ大統領が相互関税を発表。日本を含む主要貿易相手国に対し、各国の対米関税率に応じた報復関税を課す方針を示した。",
+        "ground_truth_sectors_positive": ["国内消費", "内需型"],
+        "ground_truth_sectors_negative": ["輸出型製造業", "自動車", "半導体"],
+    },
+    {
+        "name": "米イラン緊張（ソレイマニ司令官殺害）",
+        "event_date": "2020-01-03",
+        "description": "米軍がイラン革命防衛隊のソレイマニ司令官を殺害し、中東の地政学的緊張が急激に高まった。原油価格が急騰。",
+        "ground_truth_sectors_positive": ["石油・エネルギー", "防衛", "金"],
+        "ground_truth_sectors_negative": ["航空", "旅行", "保険"],
+    },
+    {
+        "name": "安倍元首相銃撃事件",
+        "event_date": "2022-07-08",
+        "description": "安倍晋三元首相が奈良市で街頭演説中に銃撃され死亡した。政治的安定性への懸念が一時高まった。",
+        "ground_truth_sectors_positive": ["防衛", "セキュリティ"],
+        "ground_truth_sectors_negative": [],
+    },
+    {
+        "name": "能登半島地震",
+        "event_date": "2024-01-01",
+        "description": "石川県能登地方を震源とするM7.6の地震が発生。広範囲で建物倒壊・インフラ被害が発生した。",
+        "ground_truth_sectors_positive": ["建設・復興", "住宅建材"],
+        "ground_truth_sectors_negative": ["観光", "北陸地域企業"],
+    },
+    {
+        "name": "東京五輪開催決定",
+        "event_date": "2013-09-08",
+        "description": "2020年夏季オリンピック・パラリンピックの開催地が東京に決定した。",
+        "ground_truth_sectors_positive": ["建設", "不動産", "観光"],
+        "ground_truth_sectors_negative": [],
+    },
+    {
+        "name": "円安150円突破",
+        "event_date": "2022-10-21",
+        "description": "ドル円相場が32年ぶりに1ドル=150円台を突破。日米金利差拡大を背景に歴史的な円安水準に到達した。",
+        "ground_truth_sectors_positive": ["輸出型製造業", "インバウンド"],
+        "ground_truth_sectors_negative": ["内需型（輸入コスト）", "食品"],
+    },
 ]
 
 
