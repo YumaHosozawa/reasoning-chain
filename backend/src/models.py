@@ -67,6 +67,9 @@ class ImpactNode:
     keywords: list[str] = field(default_factory=list)
     """マッチング用キーワード"""
 
+    parent_sectors: list[str] = field(default_factory=list)
+    """親ノードのセクター名リスト（level 2以上で設定。因果の上流を示す）"""
+
     embedding: list[float] | None = field(default=None, repr=False)
     """埋め込みベクトル（生成後に付与）"""
 
@@ -196,6 +199,9 @@ class CompanyMatchResult:
 
     impact_description: str
     """対応する影響の説明"""
+
+    impact_sector: str
+    """対応する影響のセクター名"""
 
     direction: Literal["positive", "negative", "mixed"]
     """影響の方向性"""

@@ -385,6 +385,7 @@ class CompanyMatcher:
             company_name=company_name,
             impact_level=impact.level,
             impact_description=impact.description,
+            impact_sector=impact.sector,
             direction=impact.direction,
             final_score=round(final_score, 4),
             vector_similarity=round(vector_similarity, 4),

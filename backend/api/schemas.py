@@ -45,6 +45,7 @@ class AnalysisResultCreate(BaseModel):
 class ImpactNodeResponse(BaseModel):
     level: int
     sector: str
+    parent_sectors: list[str] = []
     description: str
     direction: str
     intensity: str
@@ -62,6 +63,8 @@ class CompanyMatchResponse(BaseModel):
     company_code: str
     company_name: str
     impact_level: int
+    impact_sector: str = ""
+    impact_description: str = ""
     direction: str
     final_score: float
     vector_similarity: float

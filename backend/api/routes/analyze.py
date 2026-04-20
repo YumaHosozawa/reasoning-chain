@@ -79,6 +79,7 @@ async def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
         ImpactNodeResponse(
             level=n.level,
             sector=n.sector,
+            parent_sectors=n.parent_sectors,
             description=n.description,
             direction=n.direction,
             intensity=n.intensity,
@@ -98,6 +99,8 @@ async def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
             company_code=m.company_code,
             company_name=m.company_name,
             impact_level=m.impact_level,
+            impact_sector=m.impact_sector,
+            impact_description=m.impact_description,
             direction=m.direction,
             final_score=m.final_score,
             vector_similarity=m.vector_similarity,
@@ -126,6 +129,7 @@ async def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
             {
                 "level": n.level,
                 "sector": n.sector,
+                "parent_sectors": n.parent_sectors,
                 "description": n.description,
                 "direction": n.direction,
                 "intensity": n.intensity,
@@ -147,6 +151,7 @@ async def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
             "company_name": m.company_name,
             "impact_level": m.impact_level,
             "impact_description": m.impact_description,
+            "impact_sector": m.impact_sector,
             "direction": m.direction,
             "final_score": m.final_score,
             "vector_similarity": m.vector_similarity,

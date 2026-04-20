@@ -223,6 +223,7 @@ class ReasoningChainGenerator:
                 rationale=item["rationale"],
                 example_companies=item.get("example_companies", []),
                 keywords=item.get("keywords", []),
+                parent_sectors=item.get("parent_sectors", []),
                 # 定量予測フィールド (旧フォーマットでは欠落する可能性があるため get)
                 expected_return_pct_low=_to_float_or_none(item.get("expected_return_pct_low")),
                 expected_return_pct_high=_to_float_or_none(item.get("expected_return_pct_high")),

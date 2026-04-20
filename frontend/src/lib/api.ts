@@ -7,6 +7,7 @@ export type TimeHorizon = "immediate" | "1-4w" | "1-3m" | "3-12m";
 export interface ImpactNode {
   level: number;
   sector: string;
+  parent_sectors?: string[];
   description: string;
   direction: Direction;
   intensity: Intensity;
@@ -24,6 +25,8 @@ export interface CompanyMatch {
   company_code: string;
   company_name: string;
   impact_level: number;
+  impact_sector?: string;
+  impact_description?: string;
   direction: Direction;
   final_score: number;
   vector_similarity: number;

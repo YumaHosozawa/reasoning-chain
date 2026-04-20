@@ -23,6 +23,7 @@ CHAIN_GENERATION_USER = """\
     {{
       "level": 1,
       "sector": "影響を受けるセクター/業界名",
+      "parent_sectors": [],
       "description": "影響の詳細説明（2〜3文）",
       "direction": "positive|negative|mixed のいずれか",
       "intensity": "high|medium|low のいずれか",
@@ -38,10 +39,11 @@ CHAIN_GENERATION_USER = """\
 }}
 
 推論ルール:
-- level 1（一次影響）: イベントの直接的影響。必ず含める。
-- level 2（二次影響）: 一次影響から派生する間接影響。必ず含める。
-- level 3（三次影響）: 二次影響からさらに派生する影響。可能な場合に含める。
-- level 4（四次影響）: 明確な因果関係がある場合のみ含める。
+- level 1（一次影響）: イベントの直接的影響。必ず含める。parent_sectors は空配列 [] とする。
+- level 2（二次影響）: 一次影響から派生する間接影響。必ず含める。parent_sectors に原因となった一次影響の sector 名を列挙する。
+- level 3（三次影響）: 二次影響からさらに派生する影響。可能な場合に含める。parent_sectors に原因となった二次影響の sector 名を列挙する。
+- level 4（四次影響）: 明確な因果関係がある場合のみ含める。parent_sectors に原因となった三次影響の sector 名を列挙する。
+- parent_sectors は因果関係の上流セクターを示す。複数の親から派生する場合は複数列挙してよい。
 - 各レベルで複数の影響を列挙してよい（ポジティブ・ネガティブ両方）。
 - example_companies は実在する日本企業名を優先する。
 - keywords はベクトル検索のヒント語（事業内容・技術・製品名等）を含める。
