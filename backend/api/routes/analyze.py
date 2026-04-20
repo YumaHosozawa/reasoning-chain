@@ -38,13 +38,14 @@ def _get_generator() -> ReasoningChainGenerator:
     )
 
 
-def _get_matcher() -> CompanyMatcher:
+def _get_matcher(strategy: str = "default") -> CompanyMatcher:
     from backend.db.session import SessionLocal
 
     return CompanyMatcher(
         score_threshold=float(os.environ.get("SCORE_THRESHOLD", "0.6")),
         use_redis_cache=False,
         db_session_factory=SessionLocal,
+        strategy=strategy,
     )
 
 
@@ -64,7 +65,7 @@ async def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
     matches = []
     db_ready = True
     if not request.chain_only:
-        matcher = _get_matcher()
+        matcher = _get_matcher(strategy=request.strategy)
         try:
             db_ready = await asyncio.to_thread(matcher.is_db_ready)
             if db_ready:
