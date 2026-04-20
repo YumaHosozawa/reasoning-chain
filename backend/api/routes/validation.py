@@ -58,6 +58,21 @@ class HorizonMAE(BaseModel):
     count: int
 
 
+class LevelMAE(BaseModel):
+    impact_level: int
+    mae_return: float
+    brier_score: float | None
+    coverage_rate: float | None
+    count: int
+
+
+class HorizonLevelCross(BaseModel):
+    time_horizon: str
+    impact_level: int
+    mae_return: float
+    count: int
+
+
 class SummaryResponse(BaseModel):
     validated_count: int
     pending_count: int
@@ -66,6 +81,8 @@ class SummaryResponse(BaseModel):
     rolling_brier: float | None
     reliability_bins: list[ReliabilityBin]
     mae_by_horizon: list[HorizonMAE]
+    mae_by_level: list[LevelMAE]
+    horizon_level_cross: list[HorizonLevelCross]
 
 
 # ---------------------------------------------------------------------------
@@ -141,8 +158,22 @@ def summary(
     brier_terms: list[float] = []
     per_horizon_errors: dict[str, list[float]] = defaultdict(list)
 
+    # 影響レベル別の集計用
+    per_level_errors: dict[int, list[float]] = defaultdict(list)
+    per_level_brier: dict[int, list[float]] = defaultdict(list)
+    per_level_coverage: dict[int, list[bool]] = defaultdict(list)
+    # クロス分析用
+    cross_errors: dict[tuple[str, int], list[float]] = defaultdict(list)
+
     for r in validated:
         metrics = r.realized_metrics_json or {}
+        # matches_json から impact_level を引くための辞書
+        matches_map: dict[str, int] = {}
+        if hasattr(r, "matches_json") and r.matches_json:
+            for match in r.matches_json:
+                key = f"{match.get('company_code')}:{match.get('impact_level', 1)}"
+                matches_map[match.get("company_code", "")] = match.get("impact_level", 1)
+
         for m in metrics.get("per_match", []):
             if horizon is not None and m.get("time_horizon") != horizon:
                 continue
@@ -153,20 +184,26 @@ def summary(
             directional_hit = m.get("directional_hit")
             in_range = m.get("in_range")
             horizon_str = m.get("time_horizon")
+            impact_level = m.get("impact_level") or matches_map.get(m.get("company_code", ""), 1)
 
             if realized is not None and expected_point is not None:
                 err = abs(float(realized) - float(expected_point))
                 abs_errors.append(err)
                 if horizon_str:
                     per_horizon_errors[horizon_str].append(err)
+                per_level_errors[impact_level].append(err)
+                if horizon_str:
+                    cross_errors[(horizon_str, impact_level)].append(err)
 
             if in_range is not None:
                 coverage_flags.append(bool(in_range))
+                per_level_coverage[impact_level].append(bool(in_range))
 
             if probability is not None and directional_hit is not None:
                 p = float(probability)
                 hit = 1.0 if directional_hit else 0.0
                 brier_terms.append((p - hit) ** 2)
+                per_level_brier[impact_level].append((p - hit) ** 2)
                 idx = min(int(p * bin_count), bin_count - 1)
                 bins_pred[idx].append(p)
                 bins_hit[idx].append(int(hit))
@@ -195,6 +232,35 @@ def summary(
         for h, errs in sorted(per_horizon_errors.items())
     ]
 
+    # 影響レベル別の集計
+    mae_by_level = [
+        LevelMAE(
+            impact_level=level,
+            mae_return=sum(errs) / len(errs),
+            brier_score=(
+                sum(per_level_brier[level]) / len(per_level_brier[level])
+                if per_level_brier.get(level) else None
+            ),
+            coverage_rate=(
+                sum(1 for f in per_level_coverage[level] if f) / len(per_level_coverage[level])
+                if per_level_coverage.get(level) else None
+            ),
+            count=len(errs),
+        )
+        for level, errs in sorted(per_level_errors.items())
+    ]
+
+    # クロス分析 (時間軸 × 影響レベル)
+    horizon_level_cross = [
+        HorizonLevelCross(
+            time_horizon=h,
+            impact_level=lvl,
+            mae_return=sum(errs) / len(errs),
+            count=len(errs),
+        )
+        for (h, lvl), errs in sorted(cross_errors.items())
+    ]
+
     return SummaryResponse(
         validated_count=len(validated),
         pending_count=len(pending_count),
@@ -211,4 +277,6 @@ def summary(
         ),
         reliability_bins=reliability_bins,
         mae_by_horizon=mae_by_horizon,
+        mae_by_level=mae_by_level,
+        horizon_level_cross=horizon_level_cross,
     )
