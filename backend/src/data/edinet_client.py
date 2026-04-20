@@ -83,8 +83,16 @@ _SECTION_CONFIG: dict[str, list[str]] = {
 class EdinetClient:
     """EDINET API クライアント"""
 
-    def __init__(self, use_cache: bool = True) -> None:
+    def __init__(self, use_cache: bool = True, api_key: str | None = None) -> None:
         self._use_cache = use_cache
+        self._api_key = api_key or os.environ.get("EDINET_API_KEY", "")
+        if not self._api_key:
+            raise ValueError(
+                "EDINET API キーが設定されていません。"
+                "環境変数 EDINET_API_KEY を設定するか、"
+                "コンストラクタの api_key 引数で渡してください。"
+                "\n取得先: https://disclosure2.edinet-fsa.go.jp/weee0010.aspx"
+            )
         self._http = httpx.Client(timeout=60.0)
 
     # ------------------------------------------------------------------
@@ -117,6 +125,7 @@ class EdinetClient:
         params: dict = {
             "date": target_date.isoformat(),
             "type": 2,  # 2=メタデータ＋書類一覧
+            "Subscription-Key": self._api_key,
         }
 
         resp = self._http.get(f"{_BASE_URL}/documents.json", params=params)
@@ -144,6 +153,7 @@ class EdinetClient:
         params: dict = {
             "date": target_date.isoformat(),
             "type": 2,
+            "Subscription-Key": self._api_key,
         }
         resp = self._http.get(f"{_BASE_URL}/documents.json", params=params)
         resp.raise_for_status()
@@ -225,7 +235,7 @@ class EdinetClient:
         if self._use_cache and cache_path.exists():
             return cache_path.read_bytes()
 
-        params: dict = {"type": 5}  # 5=XBRL形式
+        params: dict = {"type": 5, "Subscription-Key": self._api_key}  # 5=XBRL形式
 
         resp = self._http.get(
             f"{_BASE_URL}/documents/{doc_id}", params=params
