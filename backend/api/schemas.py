@@ -74,6 +74,8 @@ class CompanyMatchResponse(BaseModel):
     time_horizon: str | None = None
     prediction_window_days: int | None = None
     probability: float | None = None
+    # 企業コンテキスト (最近の動向)
+    company_context: str | None = None
 
 
 class AnalyzeResponse(BaseModel):

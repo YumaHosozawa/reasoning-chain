@@ -162,6 +162,7 @@ export default function MatchTable({ matches, dbReady = true }: Props) {
                       ))}
                     </div>
                   )}
+                  {m.company_context && <ContextToggle text={m.company_context} />}
                 </td>
               </tr>
             ))}
@@ -181,6 +182,25 @@ function ScoreBar({ value }: { value: number }) {
         <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${pct}%` }} />
       </div>
       <span className="text-xs text-gray-600 tabular-nums w-8">{(value).toFixed(2)}</span>
+    </div>
+  );
+}
+
+function ContextToggle({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-1.5">
+      <button
+        onClick={() => setOpen(!open)}
+        className="text-xs text-blue-600 hover:underline"
+      >
+        {open ? "動向を閉じる ▲" : "最近の動向 ▼"}
+      </button>
+      {open && (
+        <div className="mt-1 px-2 py-1.5 rounded bg-blue-50 text-xs text-gray-700 leading-relaxed whitespace-pre-line">
+          {text}
+        </div>
+      )}
     </div>
   );
 }

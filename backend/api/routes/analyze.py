@@ -39,9 +39,12 @@ def _get_generator() -> ReasoningChainGenerator:
 
 
 def _get_matcher() -> CompanyMatcher:
+    from backend.db.session import SessionLocal
+
     return CompanyMatcher(
         score_threshold=float(os.environ.get("SCORE_THRESHOLD", "0.6")),
         use_redis_cache=False,
+        db_session_factory=SessionLocal,
     )
 
 
@@ -106,6 +109,7 @@ async def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
             time_horizon=m.time_horizon,
             prediction_window_days=m.prediction_window_days,
             probability=m.probability,
+            company_context=m.company_context,
         )
         for m in matches[: request.top_n]
     ]
@@ -154,6 +158,7 @@ async def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
             "time_horizon": m.time_horizon,
             "prediction_window_days": m.prediction_window_days,
             "probability": m.probability,
+            "company_context": m.company_context,
         }
         for m in matches[: request.top_n]
     ]

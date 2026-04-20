@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, DateTime, Float, String, Text
+from sqlalchemy import JSON, DateTime, Float, Index, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -62,4 +62,29 @@ class AnalysisResult(Base):
     # RealizedMetrics の JSON ダンプ (brier_score / mae_return / coverage_rate / per_match)
     realized_metrics_json: Mapped[dict | None] = mapped_column(
         JSON, nullable=True, default=None
+    )
+
+
+class CompanyContextRecord(Base):
+    """企業の定性情報コンテキスト（決算短信・中計・IRニュース等）"""
+
+    __tablename__ = "company_contexts"
+    __table_args__ = (
+        Index("ix_company_contexts_code", "company_code"),
+        Index("ix_company_contexts_code_type", "company_code", "context_type"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    company_code: Mapped[str] = mapped_column(String(10), nullable=False)
+    context_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    source_url: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    published_date: Mapped[str] = mapped_column(String(30), nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
