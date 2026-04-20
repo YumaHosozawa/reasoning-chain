@@ -109,6 +109,7 @@ export async function analyze(params: {
   top_n?: number;
   score_threshold?: number;
   chain_only?: boolean;
+  strategy?: string;
 }): Promise<AnalyzeResponse> {
   const res = await fetch(`${BASE}/api/analyze`, {
     method: "POST",

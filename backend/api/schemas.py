@@ -20,6 +20,7 @@ class AnalyzeRequest(BaseModel):
     top_n: int = Field(default=30, ge=1, le=100)
     score_threshold: float = Field(default=0.6, ge=0.0, le=1.0)
     chain_only: bool = Field(default=False, description="推論チェーン生成のみ（企業マッチングをスキップ）")
+    strategy: str = Field(default="default", description="マッチング戦略名 (default / small_cap_first / diversity)")
 
 
 # ---------------------------------------------------------------------------
