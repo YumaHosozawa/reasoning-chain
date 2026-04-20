@@ -7,6 +7,7 @@ export type TimeHorizon = "immediate" | "1-4w" | "1-3m" | "3-12m";
 export interface ImpactNode {
   level: number;
   sector: string;
+  parent_sectors?: string[];
   description: string;
   direction: Direction;
   intensity: Intensity;

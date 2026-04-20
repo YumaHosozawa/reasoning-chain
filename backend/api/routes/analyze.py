@@ -78,6 +78,7 @@ async def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
         ImpactNodeResponse(
             level=n.level,
             sector=n.sector,
+            parent_sectors=n.parent_sectors,
             description=n.description,
             direction=n.direction,
             intensity=n.intensity,
@@ -127,6 +128,7 @@ async def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
             {
                 "level": n.level,
                 "sector": n.sector,
+                "parent_sectors": n.parent_sectors,
                 "description": n.description,
                 "direction": n.direction,
                 "intensity": n.intensity,

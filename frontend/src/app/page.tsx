@@ -3,6 +3,9 @@
 import { useState } from "react";
 import EventForm from "@/components/EventForm";
 import ChainViewer from "@/components/ChainViewer";
+import ImpactTree from "@/components/ImpactTree";
+
+type ChainView = "list" | "tree";
 import MatchTable from "@/components/MatchTable";
 import HistorySidebar from "@/components/HistorySidebar";
 import ExportButtons from "@/components/ExportButtons";
@@ -14,6 +17,7 @@ export default function Home() {
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
   const [selectedId, setSelectedId] = useState<string | undefined>();
   const [refreshSignal, setRefreshSignal] = useState(0);
+  const [chainView, setChainView] = useState<ChainView>("list");
 
   const handleSubmit = async (params: {
     event: string;
@@ -117,13 +121,46 @@ export default function Home() {
 
               {/* 推論チェーン */}
               <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-                <h2 className="text-sm font-semibold text-gray-700 mb-3">影響チェーン</h2>
-                <ChainViewer
-                  impacts={result.impacts}
-                  matches={result.matches}
-                  confidence={result.confidence}
-                  eventType={result.event_type}
-                />
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-semibold text-gray-700">影響チェーン</h2>
+                  <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+                    <button
+                      onClick={() => setChainView("list")}
+                      className={`px-3 py-1 text-xs font-medium transition-colors ${
+                        chainView === "list"
+                          ? "bg-blue-600 text-white"
+                          : "bg-white text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      リスト
+                    </button>
+                    <button
+                      onClick={() => setChainView("tree")}
+                      className={`px-3 py-1 text-xs font-medium transition-colors ${
+                        chainView === "tree"
+                          ? "bg-blue-600 text-white"
+                          : "bg-white text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      樹木図
+                    </button>
+                  </div>
+                </div>
+
+                {chainView === "list" ? (
+                  <ChainViewer
+                    impacts={result.impacts}
+                    matches={result.matches}
+                    confidence={result.confidence}
+                    eventType={result.event_type}
+                  />
+                ) : (
+                  <ImpactTree
+                    impacts={result.impacts}
+                    matches={result.matches}
+                    eventSummary={result.event_summary}
+                  />
+                )}
               </div>
 
               {/* マッチング企業 */}

@@ -44,6 +44,7 @@ class AnalysisResultCreate(BaseModel):
 class ImpactNodeResponse(BaseModel):
     level: int
     sector: str
+    parent_sectors: list[str] = []
     description: str
     direction: str
     intensity: str

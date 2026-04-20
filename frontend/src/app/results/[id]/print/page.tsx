@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
-import { fetchExportData, type ResultDetail } from "@/lib/api";
+import { useEffect, useMemo, useState, use } from "react";
+import { fetchExportData, type ResultDetail, type ImpactNode, type CompanyMatch } from "@/lib/api";
+import { buildTreeLayout, renderTreeSvgString } from "@/lib/tree-layout";
 
 const LEVEL_LABEL: Record<number, string> = { 1: "一次", 2: "二次", 3: "三次", 4: "四次" };
 const DIRECTION_LABEL: Record<string, string> = {
@@ -15,6 +16,20 @@ const DIRECTION_COLOR: Record<string, string> = {
   negative: "#fee2e2",
   mixed: "#fef9c3",
 };
+
+function TreeDiagram({ impacts, matches, eventSummary }: { impacts: ImpactNode[]; matches: CompanyMatch[]; eventSummary: string }) {
+  const layout = useMemo(() => buildTreeLayout(impacts, matches, eventSummary), [impacts, matches, eventSummary]);
+  const svgString = useMemo(() => renderTreeSvgString(layout, eventSummary), [layout, eventSummary]);
+
+  if (impacts.length === 0) return null;
+
+  return (
+    <div className="tree-section">
+      <h2>影響ツリー</h2>
+      <div className="tree-container" dangerouslySetInnerHTML={{ __html: svgString }} />
+    </div>
+  );
+}
 
 export default function PrintPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -43,10 +58,15 @@ export default function PrintPage({ params }: { params: Promise<{ id: string }> 
       level: number; sector: string; description: string;
       direction: string; intensity: string; rationale: string;
       example_companies?: string[]; keywords?: string[];
+      parent_sectors?: string[];
+      expected_return_pct_low?: number | null;
+      expected_return_pct_high?: number | null;
+      time_horizon?: string | null;
+      probability?: number | null;
     }>;
     source_event?: string;
   };
-  const impacts = chain.impacts ?? [];
+  const impacts = (chain.impacts ?? []) as ImpactNode[];
   const matches = data.matches_json ?? [];
   const maxLevel = Math.max(...impacts.map((n) => n.level), 0);
 
@@ -74,6 +94,9 @@ export default function PrintPage({ params }: { params: Promise<{ id: string }> 
         .tag { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 9pt; margin-right: 4px; }
         .footer { margin-top: 32px; font-size: 9pt; color: #888; border-top: 1px solid #ddd; padding-top: 8px; }
         .print-btn { position: fixed; top: 16px; right: 16px; background: #1d4ed8; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+        .tree-section { break-inside: avoid; margin-top: 24px; }
+        .tree-container { overflow-x: auto; border: 1px solid #ddd; border-radius: 4px; margin-top: 8px; }
+        .tree-container svg { display: block; max-width: 100%; height: auto; }
       `}</style>
 
       <button className="print-btn no-print" onClick={() => window.print()}>
@@ -131,6 +154,9 @@ export default function PrintPage({ params }: { params: Promise<{ id: string }> 
             </div>
           );
         })}
+
+        {/* 影響ツリー図 */}
+        <TreeDiagram impacts={impacts} matches={matches} eventSummary={data.event_summary} />
 
         {/* 企業マッチング */}
         {matches.length > 0 && (
