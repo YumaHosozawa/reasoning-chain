@@ -237,6 +237,9 @@ class CompanyMatchResult:
     probability: float | None = None
     """親ImpactNodeから継承した発生確率"""
 
+    company_context: str | None = None
+    """LLMスコアリング時に参照した企業コンテキスト（最近の動向テキスト）"""
+
 
 # ---------------------------------------------------------------------------
 # 予測結果の実績検証 (outcome validation)
@@ -266,6 +269,39 @@ class RealizedMetrics:
 
     per_match: list[dict[str, Any]] = field(default_factory=list)
     """個別マッチの検証結果。realized_return_pct / in_range / directional_hit を含む。"""
+
+
+# ---------------------------------------------------------------------------
+# 企業コンテキスト（定性情報）
+# ---------------------------------------------------------------------------
+
+ContextType = Literal["earnings_summary", "midterm_plan", "ir_news"]
+
+
+@dataclass
+class CompanyContext:
+    """企業の最新定性情報（決算短信・中計・IRニュース等）。LLM要約済み。"""
+
+    company_code: str
+    """証券コード"""
+
+    context_type: ContextType
+    """情報種別"""
+
+    title: str
+    """開示タイトル"""
+
+    summary: str
+    """LLM で要約済みの内容 (最大 500 chars)"""
+
+    source_url: str
+    """元情報の URL"""
+
+    published_date: str
+    """公表日 (ISO 8601)"""
+
+    fetched_at: str
+    """取得日時 (ISO 8601)"""
 
 
 # ---------------------------------------------------------------------------
