@@ -197,6 +197,9 @@ class CompanyMatchResult:
     impact_description: str
     """対応する影響の説明"""
 
+    impact_sector: str
+    """対応する影響のセクター名"""
+
     direction: Literal["positive", "negative", "mixed"]
     """影響の方向性"""
 

@@ -24,6 +24,8 @@ export interface CompanyMatch {
   company_code: string;
   company_name: string;
   impact_level: number;
+  impact_sector?: string;
+  impact_description?: string;
   direction: Direction;
   final_score: number;
   vector_similarity: number;

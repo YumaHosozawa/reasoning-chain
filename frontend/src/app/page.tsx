@@ -120,6 +120,7 @@ export default function Home() {
                 <h2 className="text-sm font-semibold text-gray-700 mb-3">影響チェーン</h2>
                 <ChainViewer
                   impacts={result.impacts}
+                  matches={result.matches}
                   confidence={result.confidence}
                   eventType={result.event_type}
                 />
@@ -135,7 +136,7 @@ export default function Home() {
                     </span>
                   )}
                 </h2>
-                <MatchTable matches={result.matches} dbReady={result.db_ready} />
+                <MatchTable matches={result.matches} impacts={result.impacts} dbReady={result.db_ready} />
               </div>
             </div>
           )}

@@ -61,6 +61,8 @@ class CompanyMatchResponse(BaseModel):
     company_code: str
     company_name: str
     impact_level: int
+    impact_sector: str = ""
+    impact_description: str = ""
     direction: str
     final_score: float
     vector_similarity: float
