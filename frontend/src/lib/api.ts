@@ -3,6 +3,54 @@ const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 export type Direction = "positive" | "negative" | "mixed";
 export type Intensity = "high" | "medium" | "low";
 export type TimeHorizon = "immediate" | "1-4w" | "1-3m" | "3-12m";
+export type InvestmentTiming =
+  | "now"
+  | "3-6m"
+  | "6-12m"
+  | "1-2y"
+  | "2-3y"
+  | "3-5y";
+
+export const INVESTMENT_TIMING_LABELS: Record<InvestmentTiming, string> = {
+  now: "今すぐ",
+  "3-6m": "3〜6ヶ月後",
+  "6-12m": "6〜12ヶ月後",
+  "1-2y": "1〜2年後",
+  "2-3y": "2〜3年後",
+  "3-5y": "3〜5年後",
+};
+
+// 4軸の時間特性
+export type ManifestationTiming = "immediate" | "1-3m" | "3-12m" | "1y+";
+export type Duration = "short" | "medium" | "long";
+export type PriceReactionTiming = "leading" | "coincident" | "lagging";
+export type EarningsReflection = "orders" | "revenue" | "profit" | "cash";
+
+export const MANIFESTATION_LABELS: Record<ManifestationTiming, string> = {
+  immediate: "即時",
+  "1-3m": "1〜3ヶ月",
+  "3-12m": "3〜12ヶ月",
+  "1y+": "1年以上",
+};
+
+export const DURATION_LABELS: Record<Duration, string> = {
+  short: "短期",
+  medium: "中期",
+  long: "長期",
+};
+
+export const PRICE_REACTION_LABELS: Record<PriceReactionTiming, string> = {
+  leading: "先行",
+  coincident: "同時",
+  lagging: "遅行",
+};
+
+export const EARNINGS_REFLECTION_LABELS: Record<EarningsReflection, string> = {
+  orders: "受注",
+  revenue: "売上",
+  profit: "利益",
+  cash: "キャッシュ",
+};
 
 export interface ImpactNode {
   level: number;
@@ -19,6 +67,14 @@ export interface ImpactNode {
   expected_return_pct_high?: number | null;
   time_horizon?: TimeHorizon | null;
   probability?: number | null;
+  // 投資タイミング（時間ラグ考慮）
+  investment_timing?: InvestmentTiming | null;
+  timing_rationale?: string | null;
+  // 4軸の時間特性
+  manifestation_timing?: ManifestationTiming | null;
+  duration?: Duration | null;
+  price_reaction_timing?: PriceReactionTiming | null;
+  earnings_reflection?: EarningsReflection | null;
 }
 
 export interface CompanyMatch {
@@ -40,6 +96,12 @@ export interface CompanyMatch {
   prediction_window_days?: number | null;
   probability?: number | null;
   company_context?: string | null;
+  investment_timing?: InvestmentTiming | null;
+  timing_rationale?: string | null;
+  manifestation_timing?: ManifestationTiming | null;
+  duration?: Duration | null;
+  price_reaction_timing?: PriceReactionTiming | null;
+  earnings_reflection?: EarningsReflection | null;
 }
 
 export interface ReliabilityBin {

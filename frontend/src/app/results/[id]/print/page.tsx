@@ -1,7 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState, use } from "react";
-import { fetchExportData, type ResultDetail, type ImpactNode, type CompanyMatch } from "@/lib/api";
+import {
+  fetchExportData,
+  MANIFESTATION_LABELS,
+  DURATION_LABELS,
+  PRICE_REACTION_LABELS,
+  EARNINGS_REFLECTION_LABELS,
+  type ResultDetail,
+  type ImpactNode,
+  type CompanyMatch,
+  type ManifestationTiming,
+  type Duration,
+  type PriceReactionTiming,
+  type EarningsReflection,
+} from "@/lib/api";
 import { buildTreeLayout, renderTreeSvgString } from "@/lib/tree-layout";
 
 const LEVEL_LABEL: Record<number, string> = { 1: "一次", 2: "二次", 3: "三次", 4: "四次" };
@@ -11,6 +24,14 @@ const DIRECTION_LABEL: Record<string, string> = {
   mixed: "± 混在",
 };
 const INTENSITY_LABEL: Record<string, string> = { high: "高", medium: "中", low: "低" };
+const TIMING_LABEL: Record<string, string> = {
+  now: "今すぐ",
+  "3-6m": "3〜6ヶ月後",
+  "6-12m": "6〜12ヶ月後",
+  "1-2y": "1〜2年後",
+  "2-3y": "2〜3年後",
+  "3-5y": "3〜5年後",
+};
 const DIRECTION_COLOR: Record<string, string> = {
   positive: "#d1fae5",
   negative: "#fee2e2",
@@ -63,6 +84,12 @@ export default function PrintPage({ params }: { params: Promise<{ id: string }> 
       expected_return_pct_high?: number | null;
       time_horizon?: string | null;
       probability?: number | null;
+      investment_timing?: string | null;
+      timing_rationale?: string | null;
+      manifestation_timing?: string | null;
+      duration?: string | null;
+      price_reaction_timing?: string | null;
+      earnings_reflection?: string | null;
     }>;
     source_event?: string;
   };
@@ -144,6 +171,46 @@ export default function PrintPage({ params }: { params: Promise<{ id: string }> 
                   <div style={{ fontSize: "9pt", color: "#555" }}>
                     <strong>根拠:</strong> {node.rationale}
                   </div>
+                  {node.investment_timing && (
+                    <div style={{ fontSize: "9pt", marginTop: 4, background: "#fef3c7", padding: "4px 8px", borderRadius: 3 }}>
+                      <strong>推奨エントリ:</strong>{" "}
+                      <span style={{ fontWeight: "bold" }}>
+                        {TIMING_LABEL[node.investment_timing] ?? node.investment_timing}
+                      </span>
+                      {node.timing_rationale && (
+                        <div style={{ marginTop: 2, color: "#92400e" }}>
+                          {node.timing_rationale}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {(node.manifestation_timing ||
+                    node.duration ||
+                    node.price_reaction_timing ||
+                    node.earnings_reflection) && (
+                    <div style={{ fontSize: "9pt", marginTop: 4, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {node.manifestation_timing && (
+                        <span className="tag" style={{ background: "#cffafe", color: "#155e75" }}>
+                          発現: {MANIFESTATION_LABELS[node.manifestation_timing as ManifestationTiming] ?? node.manifestation_timing}
+                        </span>
+                      )}
+                      {node.duration && (
+                        <span className="tag" style={{ background: "#ccfbf1", color: "#115e59" }}>
+                          持続: {DURATION_LABELS[node.duration as Duration] ?? node.duration}
+                        </span>
+                      )}
+                      {node.price_reaction_timing && (
+                        <span className="tag" style={{ background: "#fae8ff", color: "#86198f" }}>
+                          株価反応: {PRICE_REACTION_LABELS[node.price_reaction_timing as PriceReactionTiming] ?? node.price_reaction_timing}
+                        </span>
+                      )}
+                      {node.earnings_reflection && (
+                        <span className="tag" style={{ background: "#ffedd5", color: "#9a3412" }}>
+                          業績反映: {EARNINGS_REFLECTION_LABELS[node.earnings_reflection as EarningsReflection] ?? node.earnings_reflection}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   {node.example_companies?.length ? (
                     <div style={{ fontSize: "9pt", marginTop: 4 }}>
                       <strong>関連企業例:</strong> {node.example_companies.join(" / ")}
@@ -178,6 +245,7 @@ export default function PrintPage({ params }: { params: Promise<{ id: string }> 
                         <th>コード</th>
                         <th>レベル</th>
                         <th>スコア</th>
+                        <th>エントリ</th>
                         <th>強度</th>
                         <th>根拠</th>
                       </tr>
@@ -189,6 +257,7 @@ export default function PrintPage({ params }: { params: Promise<{ id: string }> 
                           <td>{m.company_code}</td>
                           <td>{m.impact_level}次</td>
                           <td>{Number(m.final_score).toFixed(2)}</td>
+                          <td>{m.investment_timing ? (TIMING_LABEL[m.investment_timing] ?? m.investment_timing) : "—"}</td>
                           <td>{INTENSITY_LABEL[m.intensity] ?? m.intensity}</td>
                           <td>{m.rationale}</td>
                         </tr>

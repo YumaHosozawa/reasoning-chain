@@ -27,6 +27,69 @@ HORIZON_WINDOW_DAYS: dict[str, int] = {
     "3-12m": 270,
 }
 
+# ---------------------------------------------------------------------------
+# 投資タイミング (推奨エントリ時期)
+#
+# time_horizon は「株価リターンが顕在化するまで」だが、
+# investment_timing は「いつエントリすべきか」のアナリスト判断。
+# 三次以降の影響は数年先を見据えるケースもあるため長期レンジを含む。
+# ---------------------------------------------------------------------------
+
+InvestmentTiming = Literal[
+    "now", "3-6m", "6-12m", "1-2y", "2-3y", "3-5y"
+]
+
+INVESTMENT_TIMING_LABELS: dict[str, str] = {
+    "now": "今すぐ",
+    "3-6m": "3〜6ヶ月後",
+    "6-12m": "6〜12ヶ月後",
+    "1-2y": "1〜2年後",
+    "2-3y": "2〜3年後",
+    "3-5y": "3〜5年後",
+}
+
+# ---------------------------------------------------------------------------
+# 4軸の時間特性（実体経済での発現と株価/業績の関係を分解）
+# ---------------------------------------------------------------------------
+
+# 発現時期: マクロ要因が実体経済に表れ始める時期
+ManifestationTiming = Literal["immediate", "1-3m", "3-12m", "1y+"]
+
+# 持続期間: その影響が業績に効き続ける長さ
+Duration = Literal["short", "medium", "long"]
+
+# 株価反応タイミング: 業績への発現に対して株価がどう動くか
+PriceReactionTiming = Literal["leading", "coincident", "lagging"]
+
+# 業績反映タイミング: P/L のどの段階に最初に表れるか
+EarningsReflection = Literal["orders", "revenue", "profit", "cash"]
+
+MANIFESTATION_LABELS: dict[str, str] = {
+    "immediate": "即時",
+    "1-3m": "1〜3ヶ月",
+    "3-12m": "3〜12ヶ月",
+    "1y+": "1年以上",
+}
+
+DURATION_LABELS: dict[str, str] = {
+    "short": "短期",
+    "medium": "中期",
+    "long": "長期",
+}
+
+PRICE_REACTION_LABELS: dict[str, str] = {
+    "leading": "先行",
+    "coincident": "同時",
+    "lagging": "遅行",
+}
+
+EARNINGS_REFLECTION_LABELS: dict[str, str] = {
+    "orders": "受注",
+    "revenue": "売上",
+    "profit": "利益",
+    "cash": "キャッシュ",
+}
+
 
 def horizon_to_days(horizon: str | None) -> int:
     """time_horizon 文字列を検証ウィンドウ日数に変換する。未知値は 1-3m 扱い。"""
@@ -88,6 +151,33 @@ class ImpactNode:
 
     probability: float | None = None
     """このインパクトが実現する確率 (0.0–1.0)。キャリブレーションの対象。"""
+
+    investment_timing: InvestmentTiming | None = None
+    """推奨エントリ時期。now / 3-6m / 6-12m / 1-2y / 2-3y / 3-5y。
+    一次影響は短期寄り、三次以降は長期寄りが典型。"""
+
+    timing_rationale: str | None = None
+    """投資タイミングをそう推定した根拠（業績反映までのラグ、需給形成、規制施行
+    タイミング等。1〜2文）"""
+
+    # ------------------------------------------------------------------
+    # 4軸の時間特性 (より細かい時間モデル)
+    # ------------------------------------------------------------------
+
+    manifestation_timing: ManifestationTiming | None = None
+    """発現時期: 実体経済で影響が表れ始める時期。
+    immediate / 1-3m / 3-12m / 1y+。time_horizon (株価反応) と区別する。"""
+
+    duration: Duration | None = None
+    """持続期間: 影響が業績に効き続ける長さ。short(<3m) / medium(3m〜2y) / long(2y+)。"""
+
+    price_reaction_timing: PriceReactionTiming | None = None
+    """株価反応タイミング: 業績発現に対する株価の動き方。
+    leading(先行織り込み) / coincident(同時) / lagging(遅行)。"""
+
+    earnings_reflection: EarningsReflection | None = None
+    """業績反映タイミング: P/L のどこに最初に出るか。
+    orders(受注) / revenue(売上) / profit(利益) / cash(キャッシュ)。"""
 
 
 @dataclass
@@ -245,6 +335,24 @@ class CompanyMatchResult:
 
     company_context: str | None = None
     """LLMスコアリング時に参照した企業コンテキスト（最近の動向テキスト）"""
+
+    investment_timing: InvestmentTiming | None = None
+    """推奨エントリ時期 (親 ImpactNode から継承)"""
+
+    timing_rationale: str | None = None
+    """投資タイミングの推定根拠 (親 ImpactNode から継承)"""
+
+    manifestation_timing: ManifestationTiming | None = None
+    """発現時期 (親 ImpactNode から継承)"""
+
+    duration: Duration | None = None
+    """持続期間 (親 ImpactNode から継承)"""
+
+    price_reaction_timing: PriceReactionTiming | None = None
+    """株価反応タイミング (親 ImpactNode から継承)"""
+
+    earnings_reflection: EarningsReflection | None = None
+    """業績反映タイミング (親 ImpactNode から継承)"""
 
 
 # ---------------------------------------------------------------------------

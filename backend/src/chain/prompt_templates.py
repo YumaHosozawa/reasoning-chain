@@ -33,7 +33,13 @@ CHAIN_GENERATION_USER = """\
       "expected_return_pct_low": -0.12,
       "expected_return_pct_high": -0.03,
       "time_horizon": "immediate|1-4w|1-3m|3-12m のいずれか",
-      "probability": 0.0から1.0の数値
+      "probability": 0.0から1.0の数値,
+      "investment_timing": "now|3-6m|6-12m|1-2y|2-3y|3-5y のいずれか",
+      "timing_rationale": "投資タイミングをそう推定した根拠（1〜2文）",
+      "manifestation_timing": "immediate|1-3m|3-12m|1y+ のいずれか",
+      "duration": "short|medium|long のいずれか",
+      "price_reaction_timing": "leading|coincident|lagging のいずれか",
+      "earnings_reflection": "orders|revenue|profit|cash のいずれか"
     }}
   ]
 }}
@@ -61,12 +67,54 @@ CHAIN_GENERATION_USER = """\
   解釈: 「0.7 = 類似した過去事例 10 回中 7 回で観測された反応」。
   確実視できる一次影響は 0.8 以上、推測度が高い三次・四次は 0.3〜0.6 程度が典型。
 
+時間軸の分解 (各ノード必ず4軸を埋める):
+- manifestation_timing (発現時期): マクロ要因が**実体経済**に表れ始める時期。
+  * immediate: イベント当日〜1ヶ月以内（為替・原油等の直接コスト変動）
+  * 1-3m:    1〜3ヶ月以内（在庫調整・需要先食い）
+  * 3-12m:   3〜12ヶ月（受注/出荷の変化、設備投資判断）
+  * 1y+:     1年以上（構造変化、新工場稼働、規制施行後の影響）
+  ※ time_horizon (株価反応の時間軸) は max 3-12m だが manifestation_timing は 1y+ も含む。
+- duration (持続期間): その影響が業績に効き続ける長さ。
+  * short:  3ヶ月以下（在庫調整、一過性のヘッドライン反応）
+  * medium: 3ヶ月〜2年（業績サイクル1〜2周分）
+  * long:   2年以上（構造変化、シェア固定化）
+- price_reaction_timing (株価反応タイミング): 業績発現に対して株価がどう動くか。
+  * leading:    先行織り込み（決算発表前に織り込み完了）
+  * coincident: 同時（決算発表で動く）
+  * lagging:    遅行（業績悪化後に株価が崩れる/業績改善が織り込まれずに後付けで上がる）
+- earnings_reflection (業績反映タイミング): P/L のどこに最初に出るか。
+  * orders:  受注残（先行指標、業績に出る前に確認できる）
+  * revenue: 売上（出荷・売上計上）
+  * profit:  利益（粗利・営業利益のミックス効果や為替差損益）
+  * cash:    キャッシュフロー（運転資本・設備投資・配当政策）
+
+投資タイミング (時間ラグを考慮した推奨エントリ時期):
+- investment_timing は **time_horizon と別概念**。time_horizon が「株価が動くまで」、
+  investment_timing は「アナリストとして**いつ買う/空売り判断を下すか**」。
+- レベル別の典型値（あくまで目安。イベント特性で柔軟に変える）:
+  * 一次影響: now / 3-6m （ヘッドライン直後または初回決算反映を狙う）
+  * 二次影響: 3-6m / 6-12m （業績への波及確認後にエントリ）
+  * 三次影響: 6-12m / 1-2y （構造変化が顕在化し始める時期）
+  * 四次影響: 1-2y / 2-3y / 3-5y （長期トレンド形成後）
+- 規制施行日・設備投資サイクル・新工場稼働など**特定の触媒イベント**がある場合は
+  そのタイミングに合わせる（例: 「2027年4月の規制施行 6ヶ月前 = 2-3y」）。
+- timing_rationale には**なぜその時期なのか**を必ず書く。
+  良い例: 「業績反映に2四半期、その後の通期ガイダンス修正で本格的な株価織り込み。
+          類似事例（2018年米中摩擦時のレアアース企業）でも12〜18ヶ月でピーク到達」
+  悪い例: 「中期的な影響のため」（具体性ゼロ・NG）
+
 定量フィールドの例（日銀利上げの場合）:
   銀行セクター（一次・ポジティブ）: expected_return_pct_low=0.03, high=0.12, time_horizon="1-3m", probability=0.75
+    investment_timing="now", timing_rationale="利上げ発表直後から織り込み開始。次回決算で利ざや改善が確認できるため早期エントリが有利。"
+    manifestation_timing="1-3m", duration="medium", price_reaction_timing="leading", earnings_reflection="profit"
     → 過去3回の類似利上げで +5〜+10% を記録した実績を参照。
   REITセクター（一次・ネガティブ）: expected_return_pct_low=-0.10, high=-0.03, time_horizon="immediate", probability=0.70
+    investment_timing="now", timing_rationale="金利感応度が高く即時反応が典型のため、ヘッドライン直後の空売り/ショートが有効。"
+    manifestation_timing="immediate", duration="medium", price_reaction_timing="leading", earnings_reflection="cash"
     → 金利感応度が高く即時反応が典型。
   地銀の貸出金利上昇（二次・ポジティブ）: expected_return_pct_low=0.02, high=0.08, time_horizon="3-12m", probability=0.55
+    investment_timing="6-12m", timing_rationale="貸出残高の入れ替わりに2〜3四半期、利ざや改善が決算に出てから本格的な株価反応。先行買いより確認後エントリの方がリスクリワード良い。"
+    manifestation_timing="3-12m", duration="long", price_reaction_timing="lagging", earnings_reflection="profit"
     → 利ざや改善は業績反映までラグがあり、確信度は中程度。
 """
 

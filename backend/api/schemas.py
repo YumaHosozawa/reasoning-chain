@@ -57,6 +57,14 @@ class ImpactNodeResponse(BaseModel):
     expected_return_pct_high: float | None = None
     time_horizon: str | None = None
     probability: float | None = None
+    # 投資タイミング（時間ラグ考慮）
+    investment_timing: str | None = None
+    timing_rationale: str | None = None
+    # 4軸の時間特性
+    manifestation_timing: str | None = None
+    duration: str | None = None
+    price_reaction_timing: str | None = None
+    earnings_reflection: str | None = None
 
 
 class CompanyMatchResponse(BaseModel):
@@ -80,6 +88,14 @@ class CompanyMatchResponse(BaseModel):
     probability: float | None = None
     # 企業コンテキスト (最近の動向)
     company_context: str | None = None
+    # 投資タイミング（親 ImpactNode から継承）
+    investment_timing: str | None = None
+    timing_rationale: str | None = None
+    # 4軸の時間特性 (親 ImpactNode から継承)
+    manifestation_timing: str | None = None
+    duration: str | None = None
+    price_reaction_timing: str | None = None
+    earnings_reflection: str | None = None
 
 
 class AnalyzeResponse(BaseModel):
