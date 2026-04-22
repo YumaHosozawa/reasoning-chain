@@ -17,7 +17,13 @@ from pydantic import BaseModel, Field
 class AnalyzeRequest(BaseModel):
     event: str = Field(..., min_length=5, max_length=1000, description="マクロ経済イベントの説明")
     max_levels: int = Field(default=4, ge=1, le=4)
-    top_n: int = Field(default=30, ge=1, le=100)
+    top_n: int = Field(default=80, ge=1, le=300, description="表示企業数の全体上限")
+    top_n_per_impact: int = Field(
+        default=8,
+        ge=1,
+        le=30,
+        description="各影響ノードあたりの最大表示企業数",
+    )
     score_threshold: float = Field(default=0.6, ge=0.0, le=1.0)
     chain_only: bool = Field(default=False, description="推論チェーン生成のみ（企業マッチングをスキップ）")
     strategy: str = Field(default="default", description="マッチング戦略名 (default / small_cap_first / diversity)")

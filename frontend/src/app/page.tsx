@@ -23,6 +23,7 @@ export default function Home() {
     event: string;
     chain_only: boolean;
     top_n: number;
+    top_n_per_impact: number;
     score_threshold: number;
     strategy: string;
   }) => {

@@ -266,25 +266,28 @@ class CompanyMatcher:
         return list(merged.values())
 
     def _cap_per_industry(self, hits: list[dict]) -> list[dict]:
-        """同一業種コードの企業を上位 max_per_industry 件に制限し、多様性を確保する。"""
-        by_industry: dict[str, list[dict]] = defaultdict(list)
-        for h in hits:
-            by_industry[h.get("industry_code", "")].append(h)
+        """同一業種コードの企業を上位 max_per_industry 件に制限し、多様性を確保する。
 
+        strategy が出した順序を尊重し、各業種につき先着順で max_per_industry 件まで残す。
+        （以前は業種内で vector_score 降順に再ソートしており、small_cap_first /
+        diversity / mix-band な default が事実上無効化されていた）
+        """
+        counts: dict[str, int] = defaultdict(int)
         capped: list[dict] = []
-        for _code, group in by_industry.items():
-            group.sort(key=lambda x: x["vector_score"], reverse=True)
-            capped.extend(group[: self._max_per_industry])
+        for h in hits:
+            code = h.get("industry_code", "")
+            if counts[code] < self._max_per_industry:
+                capped.append(h)
+                counts[code] += 1
         return capped
 
     def _prefilter(self, hits: list[dict]) -> list[dict]:
         """
-        候補数が _max_llm_candidates を超える場合、
-        ベクトルスコア上位に絞って LLM コール数を制御する。
+        候補数が _max_llm_candidates を超える場合、strategy が出した順序の
+        先頭から LLM スコアリング枠まで切り詰める。
         """
         if len(hits) <= self._max_llm_candidates:
             return hits
-        hits.sort(key=lambda x: x["vector_score"], reverse=True)
         return hits[: self._max_llm_candidates]
 
     def _load_contexts_batch(self, company_codes: list[str]) -> dict[str, str]:
