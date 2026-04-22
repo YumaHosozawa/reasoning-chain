@@ -10,6 +10,15 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+class HistoricalAnalogueResponse(BaseModel):
+    event_name: str
+    event_date: str
+    similarity_reason: str
+    outcome_summary: str = ""
+    sector_return_pct: float | None = None
+    direction_matched: bool | None = None
+
+
 # ---------------------------------------------------------------------------
 # リクエスト
 # ---------------------------------------------------------------------------
@@ -71,6 +80,8 @@ class ImpactNodeResponse(BaseModel):
     duration: str | None = None
     price_reaction_timing: str | None = None
     earnings_reflection: str | None = None
+    # 過去類似事象 (base rate 根拠)
+    historical_analogues: list[HistoricalAnalogueResponse] = []
 
 
 class CompanyMatchResponse(BaseModel):
