@@ -39,7 +39,17 @@ CHAIN_GENERATION_USER = """\
       "manifestation_timing": "immediate|1-3m|3-12m|1y+ のいずれか",
       "duration": "short|medium|long のいずれか",
       "price_reaction_timing": "leading|coincident|lagging のいずれか",
-      "earnings_reflection": "orders|revenue|profit|cash のいずれか"
+      "earnings_reflection": "orders|revenue|profit|cash のいずれか",
+      "historical_analogues": [
+        {{
+          "event_name": "過去事象の通称",
+          "event_date": "YYYY-MM または YYYY-MM-DD",
+          "similarity_reason": "今回のイベントと類似する理由（1文）",
+          "outcome_summary": "当該セクターで実際に起きた事を1〜2文で",
+          "sector_return_pct": 0.082,
+          "direction_matched": true
+        }}
+      ]
     }}
   ]
 }}
@@ -116,6 +126,27 @@ CHAIN_GENERATION_USER = """\
     investment_timing="6-12m", timing_rationale="貸出残高の入れ替わりに2〜3四半期、利ざや改善が決算に出てから本格的な株価反応。先行買いより確認後エントリの方がリスクリワード良い。"
     manifestation_timing="3-12m", duration="long", price_reaction_timing="lagging", earnings_reflection="profit"
     → 利ざや改善は業績反映までラグがあり、確信度は中程度。
+
+過去類似事象 (historical_analogues) のルール — 予測の base rate 根拠として必須級:
+- 各ノードに 0〜3 件、最も類似性が高く実績が記録に残っている事例を挙げる。
+- event_name は通称（例: "2019年7月FRB利下げ", "2014年消費税8%増税", "2011年東日本大震災"）。
+- event_date は YYYY-MM か YYYY-MM-DD。事案の発生月までは特定する。
+- similarity_reason は今回のイベントと**何が類似しているか**を 1 文で（マクロ環境・原因構造・規模感など）。
+- outcome_summary は当該セクターでイベント後 3〜12ヶ月に実際に起きたこと（株価・業績・需給）。
+- sector_return_pct は当該セクター指数の事後リターン（小数）。確証が薄い場合は null にする（誤った数値を捏造しない）。
+- direction_matched は今回の予測方向 (positive/negative) が過去事例で実現したか。null 可。
+- 想起できない場合は **空配列** を返す。0件でも構わないが、可能な限り 1〜2 件は挙げる。
+- 一次影響では再現性の高い事例（例: 利上げ→銀行株上昇）、三次・四次では構造変化を伴う長期事例を選ぶ。
+
+過去類似事象の例（FRB利下げ、REITセクターのケース）:
+  {{
+    "event_name": "2019年7月FRB予防的利下げ",
+    "event_date": "2019-07",
+    "similarity_reason": "景気後退入りしていない予防的利下げで、長期金利低下が REIT に追い風となる構造が同じ",
+    "outcome_summary": "東証 REIT 指数は利下げ後 3 ヶ月で +8.2%、6 ヶ月で +12.4% に上昇",
+    "sector_return_pct": 0.082,
+    "direction_matched": true
+  }}
 """
 
 RELEVANCE_SCORING_SYSTEM = """\

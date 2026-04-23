@@ -14,7 +14,7 @@ from typing import AsyncIterator
 import anthropic
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
-from src.models import ImpactNode, ReasoningChain
+from src.models import HistoricalAnalogue, ImpactNode, ReasoningChain
 from src.chain.prompt_templates import (
     CHAIN_GENERATION_SYSTEM,
     CHAIN_GENERATION_USER,
@@ -68,6 +68,52 @@ def _to_str_or_none(value: object) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _to_bool_or_none(value: object) -> bool | None:
+    """LLM出力の真偽フィールドを bool に変換。欠損は None。"""
+    if isinstance(value, bool):
+        return value
+    if value is None or value == "":
+        return None
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in ("true", "yes", "1"):
+            return True
+        if lowered in ("false", "no", "0"):
+            return False
+    return None
+
+
+def _parse_analogues(items: object) -> list[HistoricalAnalogue]:
+    """LLM 出力の historical_analogues 配列を HistoricalAnalogue リストへ変換する。
+
+    各要素は最低限 event_name と event_date と similarity_reason を持つことを要求し、
+    欠落する場合はその要素をスキップする。最大 3 件まで採用。
+    """
+    if not isinstance(items, list):
+        return []
+
+    parsed: list[HistoricalAnalogue] = []
+    for item in items[:3]:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("event_name")
+        date = item.get("event_date")
+        reason = item.get("similarity_reason")
+        if not (isinstance(name, str) and isinstance(date, str) and isinstance(reason, str)):
+            continue
+        parsed.append(
+            HistoricalAnalogue(
+                event_name=name.strip(),
+                event_date=date.strip(),
+                similarity_reason=reason.strip(),
+                outcome_summary=str(item.get("outcome_summary", "")).strip(),
+                sector_return_pct=_to_float_or_none(item.get("sector_return_pct")),
+                direction_matched=_to_bool_or_none(item.get("direction_matched")),
+            )
+        )
+    return parsed
 
 
 def _is_retryable(exc: BaseException) -> bool:
@@ -262,6 +308,7 @@ class ReasoningChainGenerator:
                 duration=_validate_in(item.get("duration"), _VALID_DURATIONS),
                 price_reaction_timing=_validate_in(item.get("price_reaction_timing"), _VALID_PRICE_REACTIONS),
                 earnings_reflection=_validate_in(item.get("earnings_reflection"), _VALID_EARNINGS_REFLECTIONS),
+                historical_analogues=_parse_analogues(item.get("historical_analogues")),
             )
             for item in data.get("impacts", [])
             if item.get("level", 0) <= self.max_levels

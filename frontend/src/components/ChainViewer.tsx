@@ -9,6 +9,7 @@ import {
   EARNINGS_REFLECTION_LABELS,
   type ImpactNode,
   type CompanyMatch,
+  type HistoricalAnalogue,
   type InvestmentTiming,
   type ManifestationTiming,
   type Duration,
@@ -171,6 +172,9 @@ export default function ChainViewer({ impacts, matches = [], confidence, eventTy
                           ))}
                         </div>
                       )}
+                      {node.historical_analogues && node.historical_analogues.length > 0 && (
+                        <HistoricalAnalogues analogues={node.historical_analogues} />
+                      )}
                       {/* マッチ企業サマリ */}
                       {linkedMatches.length > 0 && (
                         <LinkedCompanies matches={linkedMatches} />
@@ -232,6 +236,53 @@ function TemporalAxes({ node }: { node: ImpactNode }) {
               {a.label}: {a.value}
             </span>
           ),
+      )}
+    </div>
+  );
+}
+
+function HistoricalAnalogues({ analogues }: { analogues: HistoricalAnalogue[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="bg-amber-50/40 border border-amber-100 rounded-lg px-3 py-2">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 text-xs text-amber-800 hover:text-amber-900 font-medium"
+      >
+        <span>過去類似事象（base rate）</span>
+        <span className="text-amber-700/60 font-mono">{analogues.length}件</span>
+        <span className="text-amber-400">{open ? "▲" : "▼"}</span>
+        <span className="text-[10px] text-amber-600/70 ml-1">※LLM想起</span>
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2">
+          {analogues.map((a, i) => (
+            <div key={i} className="text-xs text-gray-700 bg-white/60 rounded px-2 py-1.5 space-y-0.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold text-amber-900">{a.event_name}</span>
+                <span className="text-gray-400 font-mono">{a.event_date}</span>
+                {a.sector_return_pct != null && (
+                  <span className={`px-1.5 py-0.5 rounded font-mono tabular-nums ${a.sector_return_pct >= 0 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
+                    {formatPct(a.sector_return_pct)}
+                  </span>
+                )}
+                {a.direction_matched != null && (
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] ${a.direction_matched ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-600"}`}>
+                    {a.direction_matched ? "方向一致" : "方向不一致"}
+                  </span>
+                )}
+              </div>
+              <div className="text-gray-600">
+                <span className="text-gray-400">類似性：</span>{a.similarity_reason}
+              </div>
+              {a.outcome_summary && (
+                <div className="text-gray-600">
+                  <span className="text-gray-400">実績：</span>{a.outcome_summary}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

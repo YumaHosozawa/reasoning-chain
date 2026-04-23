@@ -10,6 +10,7 @@ import {
   type ResultDetail,
   type ImpactNode,
   type CompanyMatch,
+  type HistoricalAnalogue,
   type ManifestationTiming,
   type Duration,
   type PriceReactionTiming,
@@ -90,6 +91,7 @@ export default function PrintPage({ params }: { params: Promise<{ id: string }> 
       duration?: string | null;
       price_reaction_timing?: string | null;
       earnings_reflection?: string | null;
+      historical_analogues?: HistoricalAnalogue[];
     }>;
     source_event?: string;
   };
@@ -216,6 +218,32 @@ export default function PrintPage({ params }: { params: Promise<{ id: string }> 
                       <strong>関連企業例:</strong> {node.example_companies.join(" / ")}
                     </div>
                   ) : null}
+                  {node.historical_analogues && node.historical_analogues.length > 0 && (
+                    <div style={{ fontSize: "9pt", marginTop: 6, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 3, padding: "5px 8px" }}>
+                      <div style={{ fontWeight: "bold", color: "#92400e", marginBottom: 3 }}>
+                        過去類似事象（base rate, LLM想起）
+                      </div>
+                      {node.historical_analogues.map((a, i) => (
+                        <div key={i} style={{ marginBottom: 4 }}>
+                          <span style={{ fontWeight: "bold" }}>{a.event_name}</span>
+                          <span style={{ color: "#888", marginLeft: 6 }}>{a.event_date}</span>
+                          {a.sector_return_pct != null && (
+                            <span style={{
+                              marginLeft: 6,
+                              padding: "0 4px",
+                              borderRadius: 2,
+                              background: a.sector_return_pct >= 0 ? "#d1fae5" : "#fee2e2",
+                              color: a.sector_return_pct >= 0 ? "#065f46" : "#991b1b",
+                            }}>
+                              {a.sector_return_pct >= 0 ? "+" : ""}{(a.sector_return_pct * 100).toFixed(1)}%
+                            </span>
+                          )}
+                          <div style={{ color: "#555" }}>類似性: {a.similarity_reason}</div>
+                          {a.outcome_summary && <div style={{ color: "#555" }}>実績: {a.outcome_summary}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

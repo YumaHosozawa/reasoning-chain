@@ -52,6 +52,15 @@ export const EARNINGS_REFLECTION_LABELS: Record<EarningsReflection, string> = {
   cash: "キャッシュ",
 };
 
+export interface HistoricalAnalogue {
+  event_name: string;
+  event_date: string;
+  similarity_reason: string;
+  outcome_summary: string;
+  sector_return_pct?: number | null;
+  direction_matched?: boolean | null;
+}
+
 export interface ImpactNode {
   level: number;
   sector: string;
@@ -75,6 +84,8 @@ export interface ImpactNode {
   duration?: Duration | null;
   price_reaction_timing?: PriceReactionTiming | null;
   earnings_reflection?: EarningsReflection | null;
+  // 過去類似事象 (LLM想起 base rate)
+  historical_analogues?: HistoricalAnalogue[];
 }
 
 export interface CompanyMatch {

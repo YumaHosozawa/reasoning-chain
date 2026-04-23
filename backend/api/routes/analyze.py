@@ -22,6 +22,7 @@ from backend.api.schemas import (
     AnalyzeRequest,
     AnalyzeResponse,
     AnalysisResultCreate,
+    HistoricalAnalogueResponse,
     ImpactNodeResponse,
     CompanyMatchResponse,
 )
@@ -132,6 +133,9 @@ async def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
             duration=n.duration,
             price_reaction_timing=n.price_reaction_timing,
             earnings_reflection=n.earnings_reflection,
+            historical_analogues=[
+                HistoricalAnalogueResponse(**asdict(a)) for a in n.historical_analogues
+            ],
         )
         for n in chain.impacts
     ]
@@ -200,6 +204,7 @@ async def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
                 "duration": n.duration,
                 "price_reaction_timing": n.price_reaction_timing,
                 "earnings_reflection": n.earnings_reflection,
+                "historical_analogues": [asdict(a) for a in n.historical_analogues],
             }
             for n in chain.impacts
         ],

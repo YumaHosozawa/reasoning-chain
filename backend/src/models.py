@@ -179,6 +179,40 @@ class ImpactNode:
     """業績反映タイミング: P/L のどこに最初に出るか。
     orders(受注) / revenue(売上) / profit(利益) / cash(キャッシュ)。"""
 
+    # ------------------------------------------------------------------
+    # 過去類似事象 (base rate)
+    # ------------------------------------------------------------------
+
+    historical_analogues: list["HistoricalAnalogue"] = field(default_factory=list)
+    """過去の類似マクロイベントとそのセクター実績 (LLM想起、0〜3件)"""
+
+
+@dataclass
+class HistoricalAnalogue:
+    """過去の類似マクロイベントの記録 (base rate 根拠)。
+
+    LLM が知識ベースから想起した参考事例。数値は不確実性が高いため、
+    UI 上は「LLM 想起」である旨を明示する。
+    """
+
+    event_name: str
+    """過去事象の通称 (例: '2019年7月FRB利下げ')"""
+
+    event_date: str
+    """過去事象の発生日 (YYYY-MM 形式または YYYY-MM-DD)"""
+
+    similarity_reason: str
+    """現在のイベントと類似している理由"""
+
+    outcome_summary: str
+    """当該セクターで実際に何が起きたかの短い記述"""
+
+    sector_return_pct: float | None = None
+    """当該セクターの株価リターン (例: +0.082 = +8.2%)。不明なら null。"""
+
+    direction_matched: bool | None = None
+    """現在の予測方向 (positive/negative) が過去事例で実現したか。不明なら null。"""
+
 
 @dataclass
 class ReasoningChain:
