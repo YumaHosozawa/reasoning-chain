@@ -7,6 +7,7 @@ interface Props {
     event: string;
     chain_only: boolean;
     top_n: number;
+    top_n_per_impact: number;
     score_threshold: number;
     strategy: string;
   }) => void;
@@ -16,14 +17,22 @@ interface Props {
 export default function EventForm({ onSubmit, loading }: Props) {
   const [event, setEvent] = useState("");
   const [chainOnly, setChainOnly] = useState(false);
-  const [topN, setTopN] = useState(10);
+  const [topNPerImpact, setTopNPerImpact] = useState(8);
+  const [topN, setTopN] = useState(80);
   const [threshold, setThreshold] = useState(0.6);
   const [strategy, setStrategy] = useState("default");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!event.trim()) return;
-    onSubmit({ event: event.trim(), chain_only: chainOnly, top_n: topN, score_threshold: threshold, strategy });
+    onSubmit({
+      event: event.trim(),
+      chain_only: chainOnly,
+      top_n: topN,
+      top_n_per_impact: topNPerImpact,
+      score_threshold: threshold,
+      strategy,
+    });
   };
 
   return (
@@ -55,14 +64,28 @@ export default function EventForm({ onSubmit, loading }: Props) {
         </label>
 
         <label className="flex items-center gap-2">
-          <span className="text-gray-600">表示企業数</span>
+          <span className="text-gray-600">影響あたり企業数</span>
+          <select
+            value={topNPerImpact}
+            onChange={(e) => setTopNPerImpact(Number(e.target.value))}
+            className="rounded border border-gray-300 px-2 py-1 text-sm"
+            disabled={loading}
+          >
+            {[3, 5, 8, 10, 15, 20].map((n) => (
+              <option key={n} value={n}>{n}社</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex items-center gap-2">
+          <span className="text-gray-600">全体上限</span>
           <select
             value={topN}
             onChange={(e) => setTopN(Number(e.target.value))}
             className="rounded border border-gray-300 px-2 py-1 text-sm"
             disabled={loading}
           >
-            {[5, 10, 20, 30].map((n) => (
+            {[30, 50, 80, 120, 200].map((n) => (
               <option key={n} value={n}>{n}社</option>
             ))}
           </select>

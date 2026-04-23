@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+from collections import defaultdict
 from dataclasses import asdict
 from datetime import datetime, timezone
 
@@ -47,6 +48,41 @@ def _get_matcher(strategy: str = "default") -> CompanyMatcher:
         db_session_factory=SessionLocal,
         strategy=strategy,
     )
+
+
+def _select_per_impact(matches, per_impact: int, total_cap: int):
+    """影響ノード単位で上位 per_impact 件ずつ取り、全体で total_cap に収める。
+
+    matches は final_score 降順前提。(impact_level, impact_sector) ごとに
+    枠を確保することで、高スコア影響がグローバル上位を独占するのを防ぐ。
+    """
+    if not matches:
+        return []
+
+    per_group: dict = defaultdict(list)
+    order: list = []  # impact 出現順を保持
+    for m in matches:
+        key = (m.impact_level, m.impact_sector or "")
+        if key not in per_group:
+            order.append(key)
+        if len(per_group[key]) < per_impact:
+            per_group[key].append(m)
+
+    # 各 impact の上位から順にラウンドロビンで拾い、total_cap で打ち切り
+    selected = []
+    idx = 0
+    remaining = True
+    while remaining and len(selected) < total_cap:
+        remaining = False
+        for key in order:
+            group = per_group[key]
+            if idx < len(group):
+                selected.append(group[idx])
+                remaining = True
+                if len(selected) >= total_cap:
+                    break
+        idx += 1
+    return selected
 
 
 @router.post("", response_model=AnalyzeResponse)
@@ -94,6 +130,12 @@ async def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
         for n in chain.impacts
     ]
 
+    selected_matches = _select_per_impact(
+        matches,
+        per_impact=request.top_n_per_impact,
+        total_cap=request.top_n,
+    )
+
     match_responses = [
         CompanyMatchResponse(
             company_code=m.company_code,
@@ -115,7 +157,7 @@ async def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
             probability=m.probability,
             company_context=m.company_context,
         )
-        for m in matches[: request.top_n]
+        for m in selected_matches
     ]
 
     # DB保存用にJSONシリアライズ
@@ -166,7 +208,7 @@ async def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
             "probability": m.probability,
             "company_context": m.company_context,
         }
-        for m in matches[: request.top_n]
+        for m in selected_matches
     ]
 
     record = crud.create_result(

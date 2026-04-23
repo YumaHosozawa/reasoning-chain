@@ -127,6 +127,7 @@ export async function analyze(params: {
   event: string;
   max_levels?: number;
   top_n?: number;
+  top_n_per_impact?: number;
   score_threshold?: number;
   chain_only?: boolean;
   strategy?: string;

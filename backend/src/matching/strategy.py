@@ -37,12 +37,41 @@ class MatchingStrategy(ABC):
 
 
 class DefaultStrategy(MatchingStrategy):
-    """既存ロジック: ベクトルスコア降順（変更なし）"""
+    """高スコア優先 + 中位帯（マイナー上場企業）を一定割合インターリーブ。
+
+    純粋な vector_score 降順だと事業記述がイベント語彙と一致しやすい
+    大型・有名企業ばかりになるため、7:3 の比率で中位帯候補を混ぜる。
+    """
 
     name = "default"
+    _MIX_RATIO = 0.3
+    _TOP_RATIO = 7
+    _MID_RATIO = 3
 
     def rerank(self, hits: list[dict]) -> list[dict]:
-        return sorted(hits, key=lambda x: x["vector_score"], reverse=True)
+        sorted_hits = sorted(hits, key=lambda x: x["vector_score"], reverse=True)
+        n = len(sorted_hits)
+        if n <= 5:
+            return sorted_hits
+
+        split = max(1, int(n * (1 - self._MIX_RATIO)))
+        top_band = sorted_hits[:split]
+        mid_band = sorted_hits[split:]
+
+        result: list[dict] = []
+        i = j = 0
+        while i < len(top_band) or j < len(mid_band):
+            for _ in range(self._TOP_RATIO):
+                if i >= len(top_band):
+                    break
+                result.append(top_band[i])
+                i += 1
+            for _ in range(self._MID_RATIO):
+                if j >= len(mid_band):
+                    break
+                result.append(mid_band[j])
+                j += 1
+        return result
 
 
 class SmallCapFirstStrategy(MatchingStrategy):
