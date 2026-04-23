@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 from dataclasses import asdict
 from typing import Sequence
+from urllib.parse import urlparse
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -39,9 +40,16 @@ class VectorStore:
         url: str | None = None,
         api_key: str | None = None,
     ) -> None:
+        resolved_url = _resolve_qdrant_url(url)
+        resolved_api_key = _resolve_qdrant_api_key(
+            resolved_url,
+            explicit_api_key=api_key,
+        )
+        self._url = resolved_url
         self._client = QdrantClient(
-            url=url or os.environ.get("QDRANT_URL", "http://localhost:6333"),
-            api_key=api_key or os.environ.get("QDRANT_API_KEY") or None,
+            url=resolved_url,
+            api_key=resolved_api_key,
+            check_compatibility=False,
         )
 
     # ------------------------------------------------------------------
@@ -50,7 +58,10 @@ class VectorStore:
 
     def ensure_collections(self) -> None:
         """必要なコレクションが存在しなければ作成する"""
-        existing = {c.name for c in self._client.get_collections().collections}
+        try:
+            existing = {c.name for c in self._client.get_collections().collections}
+        except Exception as e:
+            raise RuntimeError(_build_qdrant_connection_error(self._url, e)) from e
 
         if COLLECTION_FULL not in existing:
             self._client.create_collection(
@@ -238,3 +249,56 @@ def _code_to_id(company_code: str) -> int:
 def _segment_id(company_code: str, segment_index: int) -> int:
     """セグメントポイントIDを生成する（企業ID * 100 + セグメントインデックス）"""
     return _code_to_id(company_code) * 100 + segment_index
+
+
+def _resolve_qdrant_url(explicit_url: str | None) -> str:
+    """Qdrant接続URLを決定する。"""
+    if explicit_url:
+        return explicit_url
+    env_url = os.environ.get("QDRANT_URL")
+    if env_url:
+        return env_url
+    endpoint = os.environ.get("QDRANT_ENDPOINT")
+    if endpoint:
+        return endpoint
+    return "http://localhost:6333"
+
+
+def _resolve_qdrant_api_key(url: str, explicit_api_key: str | None) -> str | None:
+    """
+    APIキーを決定する。
+    ローカルHTTP接続ではキーを送らず、Qdrant clientの警告を回避する。
+    """
+    key = explicit_api_key if explicit_api_key is not None else os.environ.get("QDRANT_API_KEY")
+    if not key:
+        return None
+
+    parsed = urlparse(url)
+    is_local_http = (
+        parsed.scheme == "http"
+        and (parsed.hostname in {"localhost", "127.0.0.1"})
+    )
+    return None if is_local_http else key
+
+
+def _build_qdrant_connection_error(url: str, exc: Exception) -> str:
+    parsed = urlparse(url)
+    is_local = parsed.hostname in {"localhost", "127.0.0.1"}
+    message = [
+        f"Qdrant接続に失敗しました: {url}",
+        f"原因: {exc}",
+    ]
+    if is_local:
+        message.extend(
+            [
+                "ローカル利用時は Docker Desktop を起動し、次を実行してください:",
+                "  docker compose -f infra/docker-compose.yml up -d qdrant",
+            ]
+        )
+    else:
+        message.extend(
+            [
+                "クラウド利用時は QDRANT_URL (https://...) と QDRANT_API_KEY を確認してください。",
+            ]
+        )
+    return "\n".join(message)
