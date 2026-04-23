@@ -289,10 +289,15 @@ def _get_company_codes_from_qdrant(limit: int | None) -> list[str]:
     """Qdrant に登録済みの企業コードを取得する。"""
     try:
         from qdrant_client import QdrantClient
+        from src.matching.vector_store import _resolve_qdrant_url, _resolve_qdrant_api_key
+
+        qdrant_url = _resolve_qdrant_url(None)
+        qdrant_api_key = _resolve_qdrant_api_key(qdrant_url, explicit_api_key=None)
 
         client = QdrantClient(
-            url=os.environ.get("QDRANT_URL", "http://localhost:6333"),
-            api_key=os.environ.get("QDRANT_API_KEY") or None,
+            url=qdrant_url,
+            api_key=qdrant_api_key,
+            check_compatibility=False,
         )
 
         codes: list[str] = []

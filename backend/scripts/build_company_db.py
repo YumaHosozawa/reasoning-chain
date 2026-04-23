@@ -201,7 +201,11 @@ def main() -> None:
     segment_parser = SegmentParser()
     embedder = Embedder()
     vector_store = VectorStore()
-    vector_store.ensure_collections()
+    try:
+        vector_store.ensure_collections()
+    except RuntimeError as e:
+        print(str(e), file=sys.stderr)
+        raise SystemExit(1)
 
     # 書類一覧の収集
     docs = collect_doc_ids(edinet_client, start_date, end_date, limit=args.limit)
