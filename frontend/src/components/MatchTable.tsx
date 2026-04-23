@@ -1,7 +1,20 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { CompanyMatch, ImpactNode } from "@/lib/api";
+import {
+  INVESTMENT_TIMING_LABELS,
+  MANIFESTATION_LABELS,
+  DURATION_LABELS,
+  PRICE_REACTION_LABELS,
+  EARNINGS_REFLECTION_LABELS,
+  type CompanyMatch,
+  type ImpactNode,
+  type InvestmentTiming,
+  type ManifestationTiming,
+  type Duration,
+  type PriceReactionTiming,
+  type EarningsReflection,
+} from "@/lib/api";
 
 const DIRECTION_BADGE: Record<string, string> = {
   positive: "bg-emerald-100 text-emerald-700",
@@ -125,7 +138,8 @@ export default function MatchTable({ matches, impacts = [], dbReady = true }: Pr
               <th className="px-3 py-2 text-left">紐づきノード</th>
               <th className="px-3 py-2 text-center">スコア</th>
               <th className="px-3 py-2 text-center">期待リターン</th>
-              <th className="px-3 py-2 text-center">Horizon</th>
+              <th className="px-3 py-2 text-center">反応時期</th>
+              <th className="px-3 py-2 text-center">エントリ</th>
               <th className="px-3 py-2 text-center">強度</th>
               <th className="px-3 py-2 text-left">根拠</th>
             </tr>
@@ -178,6 +192,9 @@ function MatchRow({ match: m, impacts }: { match: CompanyMatch; impacts: ImpactN
       </td>
       <td className="px-3 py-2 text-center text-xs text-gray-600">
         {m.time_horizon ? HORIZON_LABEL[m.time_horizon] ?? m.time_horizon : "—"}
+      </td>
+      <td className="px-3 py-2 text-center">
+        <TimingWithRationale match={m} />
       </td>
       <td className="px-3 py-2 text-center text-xs text-gray-600">
         {INTENSITY_LABEL[m.intensity]}
@@ -465,6 +482,110 @@ function ReturnWithRationale({
                 </p>
               </div>
             )}
+          </div>
+        </Popover>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* 投資タイミング表示（クリックで根拠ポップアップ）                      */
+/* ------------------------------------------------------------------ */
+
+function TimingWithRationale({ match: m }: { match: CompanyMatch }) {
+  const [open, setOpen] = useState(false);
+  const timing = m.investment_timing;
+
+  if (!timing) {
+    return <span className="text-xs text-gray-400">—</span>;
+  }
+
+  const label = INVESTMENT_TIMING_LABELS[timing as InvestmentTiming] ?? timing;
+  const isLongTerm = timing === "1-2y" || timing === "2-3y" || timing === "3-5y";
+  const colorClass = isLongTerm
+    ? "bg-rose-100 text-rose-800"
+    : timing === "now"
+    ? "bg-emerald-100 text-emerald-800"
+    : "bg-amber-100 text-amber-800";
+
+  return (
+    <div className="relative inline-block">
+      <button
+        onClick={() => setOpen(!open)}
+        className={`px-2 py-0.5 rounded text-xs font-medium ${colorClass} hover:opacity-80`}
+      >
+        {label}
+        {m.timing_rationale && <span className="ml-0.5 opacity-60">▾</span>}
+      </button>
+
+      {open && (
+        <Popover onClose={() => setOpen(false)}>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-gray-700">推奨エントリ時期</span>
+              <span className={`px-2 py-0.5 rounded text-xs font-medium ${colorClass}`}>
+                {label}
+              </span>
+            </div>
+            {m.timing_rationale ? (
+              <p className="text-xs text-gray-600 leading-relaxed">
+                {m.timing_rationale}
+              </p>
+            ) : (
+              <p className="text-xs text-gray-400">
+                LLM が根拠を出力していません（旧データの可能性）
+              </p>
+            )}
+            {/* 4軸の時間特性 */}
+            {(m.manifestation_timing ||
+              m.duration ||
+              m.price_reaction_timing ||
+              m.earnings_reflection) && (
+              <div className="border-t border-gray-100 pt-2 grid grid-cols-2 gap-y-1 gap-x-3 text-xs">
+                {m.manifestation_timing && (
+                  <div>
+                    <span className="text-gray-400">発現時期:</span>{" "}
+                    <span className="text-gray-700">
+                      {MANIFESTATION_LABELS[m.manifestation_timing as ManifestationTiming]}
+                    </span>
+                  </div>
+                )}
+                {m.duration && (
+                  <div>
+                    <span className="text-gray-400">持続:</span>{" "}
+                    <span className="text-gray-700">
+                      {DURATION_LABELS[m.duration as Duration]}
+                    </span>
+                  </div>
+                )}
+                {m.price_reaction_timing && (
+                  <div>
+                    <span className="text-gray-400">株価反応:</span>{" "}
+                    <span className="text-gray-700">
+                      {PRICE_REACTION_LABELS[m.price_reaction_timing as PriceReactionTiming]}
+                    </span>
+                  </div>
+                )}
+                {m.earnings_reflection && (
+                  <div>
+                    <span className="text-gray-400">業績反映:</span>{" "}
+                    <span className="text-gray-700">
+                      {EARNINGS_REFLECTION_LABELS[m.earnings_reflection as EarningsReflection]}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="border-t border-gray-100 pt-2 text-xs text-gray-400 leading-relaxed">
+              <p>
+                <span className="font-medium text-gray-500">投資タイミングと反応時期の違い:</span>
+              </p>
+              <p className="mt-0.5">
+                「反応時期」は株価が動くまで、「エントリ」は今すぐ買うか後で買うかのアナリスト判断。
+                三次・四次影響では構造変化に数年かかるため、エントリも長期になる傾向があります。
+              </p>
+            </div>
           </div>
         </Popover>
       )}

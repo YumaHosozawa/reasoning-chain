@@ -126,6 +126,12 @@ async def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
             expected_return_pct_high=n.expected_return_pct_high,
             time_horizon=n.time_horizon,
             probability=n.probability,
+            investment_timing=n.investment_timing,
+            timing_rationale=n.timing_rationale,
+            manifestation_timing=n.manifestation_timing,
+            duration=n.duration,
+            price_reaction_timing=n.price_reaction_timing,
+            earnings_reflection=n.earnings_reflection,
         )
         for n in chain.impacts
     ]
@@ -156,6 +162,12 @@ async def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
             prediction_window_days=m.prediction_window_days,
             probability=m.probability,
             company_context=m.company_context,
+            investment_timing=m.investment_timing,
+            timing_rationale=m.timing_rationale,
+            manifestation_timing=m.manifestation_timing,
+            duration=m.duration,
+            price_reaction_timing=m.price_reaction_timing,
+            earnings_reflection=m.earnings_reflection,
         )
         for m in selected_matches
     ]
@@ -182,6 +194,12 @@ async def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
                 "expected_return_pct_high": n.expected_return_pct_high,
                 "time_horizon": n.time_horizon,
                 "probability": n.probability,
+                "investment_timing": n.investment_timing,
+                "timing_rationale": n.timing_rationale,
+                "manifestation_timing": n.manifestation_timing,
+                "duration": n.duration,
+                "price_reaction_timing": n.price_reaction_timing,
+                "earnings_reflection": n.earnings_reflection,
             }
             for n in chain.impacts
         ],
@@ -207,6 +225,12 @@ async def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
             "prediction_window_days": m.prediction_window_days,
             "probability": m.probability,
             "company_context": m.company_context,
+            "investment_timing": m.investment_timing,
+            "timing_rationale": m.timing_rationale,
+            "manifestation_timing": m.manifestation_timing,
+            "duration": m.duration,
+            "price_reaction_timing": m.price_reaction_timing,
+            "earnings_reflection": m.earnings_reflection,
         }
         for m in selected_matches
     ]

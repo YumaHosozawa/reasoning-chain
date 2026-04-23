@@ -1,7 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import type { ImpactNode, CompanyMatch } from "@/lib/api";
+import {
+  INVESTMENT_TIMING_LABELS,
+  MANIFESTATION_LABELS,
+  DURATION_LABELS,
+  PRICE_REACTION_LABELS,
+  EARNINGS_REFLECTION_LABELS,
+  type ImpactNode,
+  type CompanyMatch,
+  type InvestmentTiming,
+  type ManifestationTiming,
+  type Duration,
+  type PriceReactionTiming,
+  type EarningsReflection,
+} from "@/lib/api";
 
 const LEVEL_LABELS: Record<number, string> = { 1: "一次", 2: "二次", 3: "三次", 4: "四次" };
 const DIRECTION_COLOR: Record<string, string> = {
@@ -115,7 +128,8 @@ export default function ChainViewer({ impacts, matches = [], confidence, eventTy
                       <p className="text-sm text-gray-700 leading-relaxed">{node.description}</p>
                       {(node.expected_return_pct_low != null ||
                         node.time_horizon ||
-                        node.probability != null) && (
+                        node.probability != null ||
+                        node.investment_timing) && (
                         <div className="flex flex-wrap items-center gap-2 text-xs">
                           {node.expected_return_pct_low != null &&
                             node.expected_return_pct_high != null && (
@@ -126,7 +140,12 @@ export default function ChainViewer({ impacts, matches = [], confidence, eventTy
                             )}
                           {node.time_horizon && (
                             <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700">
-                              {HORIZON_LABEL[node.time_horizon] ?? node.time_horizon}
+                              反応 {HORIZON_LABEL[node.time_horizon] ?? node.time_horizon}
+                            </span>
+                          )}
+                          {node.investment_timing && (
+                            <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-medium">
+                              エントリ {INVESTMENT_TIMING_LABELS[node.investment_timing as InvestmentTiming] ?? node.investment_timing}
                             </span>
                           )}
                           {node.probability != null && (
@@ -139,6 +158,12 @@ export default function ChainViewer({ impacts, matches = [], confidence, eventTy
                       <p className="text-xs text-gray-500 leading-relaxed">
                         <span className="font-medium">根拠：</span>{node.rationale}
                       </p>
+                      <TemporalAxes node={node} />
+                      {node.timing_rationale && (
+                        <p className="text-xs text-amber-800 leading-relaxed bg-amber-50/60 rounded px-2 py-1.5">
+                          <span className="font-medium">タイミング根拠：</span>{node.timing_rationale}
+                        </p>
+                      )}
                       {node.example_companies.length > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {node.example_companies.map((c) => (
@@ -158,6 +183,56 @@ export default function ChainViewer({ impacts, matches = [], confidence, eventTy
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function TemporalAxes({ node }: { node: ImpactNode }) {
+  const axes: { label: string; value?: string | null; color: string }[] = [
+    {
+      label: "発現時期",
+      value: node.manifestation_timing
+        ? MANIFESTATION_LABELS[node.manifestation_timing as ManifestationTiming]
+        : null,
+      color: "bg-cyan-50 text-cyan-700 border-cyan-200",
+    },
+    {
+      label: "持続",
+      value: node.duration ? DURATION_LABELS[node.duration as Duration] : null,
+      color: "bg-teal-50 text-teal-700 border-teal-200",
+    },
+    {
+      label: "株価反応",
+      value: node.price_reaction_timing
+        ? PRICE_REACTION_LABELS[node.price_reaction_timing as PriceReactionTiming]
+        : null,
+      color: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200",
+    },
+    {
+      label: "業績反映",
+      value: node.earnings_reflection
+        ? EARNINGS_REFLECTION_LABELS[node.earnings_reflection as EarningsReflection]
+        : null,
+      color: "bg-orange-50 text-orange-700 border-orange-200",
+    },
+  ];
+
+  const hasAny = axes.some((a) => a.value);
+  if (!hasAny) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+      {axes.map(
+        (a) =>
+          a.value && (
+            <span
+              key={a.label}
+              className={`px-1.5 py-0.5 rounded border font-medium ${a.color}`}
+            >
+              {a.label}: {a.value}
+            </span>
+          ),
+      )}
     </div>
   );
 }

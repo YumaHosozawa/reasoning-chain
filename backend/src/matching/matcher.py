@@ -402,6 +402,12 @@ class CompanyMatcher:
             prediction_window_days=prediction_window_days,
             probability=impact.probability,
             company_context=company_context or None,
+            investment_timing=impact.investment_timing,
+            timing_rationale=impact.timing_rationale,
+            manifestation_timing=impact.manifestation_timing,
+            duration=impact.duration,
+            price_reaction_timing=impact.price_reaction_timing,
+            earnings_reflection=impact.earnings_reflection,
         )
 
     @retry(

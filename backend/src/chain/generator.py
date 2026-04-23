@@ -24,6 +24,11 @@ from src.chain.prompt_templates import (
 
 
 _VALID_HORIZONS = {"immediate", "1-4w", "1-3m", "3-12m"}
+_VALID_INVESTMENT_TIMINGS = {"now", "3-6m", "6-12m", "1-2y", "2-3y", "3-5y"}
+_VALID_MANIFESTATIONS = {"immediate", "1-3m", "3-12m", "1y+"}
+_VALID_DURATIONS = {"short", "medium", "long"}
+_VALID_PRICE_REACTIONS = {"leading", "coincident", "lagging"}
+_VALID_EARNINGS_REFLECTIONS = {"orders", "revenue", "profit", "cash"}
 
 
 def _to_float_or_none(value: object) -> float | None:
@@ -41,6 +46,28 @@ def _validate_horizon(value: object) -> str | None:
     if isinstance(value, str) and value in _VALID_HORIZONS:
         return value
     return None
+
+
+def _validate_investment_timing(value: object) -> str | None:
+    """investment_timing が許容値のいずれかに一致すれば返す。それ以外は None。"""
+    if isinstance(value, str) and value in _VALID_INVESTMENT_TIMINGS:
+        return value
+    return None
+
+
+def _validate_in(value: object, allowed: set[str]) -> str | None:
+    """汎用バリデータ: value が allowed に含まれれば返す。それ以外は None。"""
+    if isinstance(value, str) and value in allowed:
+        return value
+    return None
+
+
+def _to_str_or_none(value: object) -> str | None:
+    """LLM出力のテキストフィールドを str に正規化。空文字・None は None。"""
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
 
 
 def _is_retryable(exc: BaseException) -> bool:
@@ -229,6 +256,12 @@ class ReasoningChainGenerator:
                 expected_return_pct_high=_to_float_or_none(item.get("expected_return_pct_high")),
                 time_horizon=_validate_horizon(item.get("time_horizon")),
                 probability=_to_float_or_none(item.get("probability")),
+                investment_timing=_validate_investment_timing(item.get("investment_timing")),
+                timing_rationale=_to_str_or_none(item.get("timing_rationale")),
+                manifestation_timing=_validate_in(item.get("manifestation_timing"), _VALID_MANIFESTATIONS),
+                duration=_validate_in(item.get("duration"), _VALID_DURATIONS),
+                price_reaction_timing=_validate_in(item.get("price_reaction_timing"), _VALID_PRICE_REACTIONS),
+                earnings_reflection=_validate_in(item.get("earnings_reflection"), _VALID_EARNINGS_REFLECTIONS),
             )
             for item in data.get("impacts", [])
             if item.get("level", 0) <= self.max_levels
