@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime, timezone
 from typing import AsyncIterator
 
@@ -116,6 +117,70 @@ def _parse_analogues(items: object) -> list[HistoricalAnalogue]:
     return parsed
 
 
+_TRAILING_COMMA_RE = re.compile(r",(\s*[}\]])")
+
+
+def _strip_trailing_commas(text: str) -> str:
+    """末尾カンマ ( `,}` や `,]` 直前) を除去する。文字列内のカンマには触れない簡易版。"""
+    out: list[str] = []
+    in_string = False
+    escape = False
+    for ch in text:
+        if escape:
+            out.append(ch)
+            escape = False
+            continue
+        if ch == "\\" and in_string:
+            out.append(ch)
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+        out.append(ch)
+    joined = "".join(out)
+    return _TRAILING_COMMA_RE.sub(r"\1", joined)
+
+
+def _loads_lenient(text: str) -> dict:
+    """LLM出力 JSON を寛容に読み込む。
+
+    1. 厳密 json.loads
+    2. 末尾カンマ除去 → 再試行
+    3. 末尾切断（impacts 配列が閉じていない）を想定して括弧を補完 → 再試行
+    4. すべて失敗時は失敗位置周辺のスニペットを添えて JSONDecodeError を再 raise
+    """
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    repaired = _strip_trailing_commas(text)
+    try:
+        return json.loads(repaired)
+    except json.JSONDecodeError:
+        pass
+
+    fixed = repaired.rstrip().rstrip(",")
+    for suffix in ["]}", "\n]}", "\n  ]\n}"]:
+        try:
+            return json.loads(fixed + suffix)
+        except json.JSONDecodeError:
+            continue
+
+    # ここまで来たら失敗位置周辺をエラーに含めて再raise
+    try:
+        json.loads(text)
+    except json.JSONDecodeError as e:
+        pos = e.pos
+        snippet = text[max(0, pos - 80) : min(len(text), pos + 80)]
+        raise json.JSONDecodeError(
+            f"{e.msg} | snippet around pos {pos}: ...{snippet}...",
+            e.doc,
+            e.pos,
+        ) from None
+    raise RuntimeError("unreachable")
+
+
 def _is_retryable(exc: BaseException) -> bool:
     """
     リトライ対象のエラーかどうかを判定する。
@@ -138,7 +203,7 @@ class ReasoningChainGenerator:
         self,
         model: str | None = None,
         max_levels: int = 4,
-        max_tokens: int = 8192,
+        max_tokens: int = 16384,
     ) -> None:
         self._client = anthropic.Anthropic(
             api_key=os.environ.get("ANTHROPIC_API_KEY")
@@ -272,19 +337,7 @@ class ReasoningChainGenerator:
                 if not line.startswith("```")
             ).strip()
 
-        try:
-            data = json.loads(text)
-        except json.JSONDecodeError:
-            # 末尾が切れている場合、impacts配列の閉じ括弧を補完して再試行
-            fixed = text.rstrip().rstrip(",")
-            for suffix in ["]}", "\n]}", "\n  ]\n}"]:
-                try:
-                    data = json.loads(fixed + suffix)
-                    break
-                except json.JSONDecodeError:
-                    continue
-            else:
-                raise
+        data = _loads_lenient(text)
 
         impacts = [
             ImpactNode(
