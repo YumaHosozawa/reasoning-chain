@@ -14,6 +14,7 @@ from collections import defaultdict
 from dataclasses import asdict
 from datetime import datetime, timezone
 
+import anthropic
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -96,6 +97,39 @@ async def analyze(request: AnalyzeRequest, db: Session = Depends(get_db)):
 
     try:
         chain = await asyncio.to_thread(generator.generate, request.event)
+    except anthropic.BadRequestError as e:
+        msg = str(e)
+        if "credit balance is too low" in msg.lower():
+            raise HTTPException(
+                status_code=402,
+                detail=(
+                    "Anthropic API のクレジット残高が不足しています。"
+                    "https://console.anthropic.com/settings/billing で残高を追加してください。"
+                ),
+            )
+        raise HTTPException(status_code=400, detail=f"Anthropic API リクエストエラー: {msg}")
+    except anthropic.AuthenticationError as e:
+        raise HTTPException(
+            status_code=401,
+            detail=f"Anthropic API 認証エラー（APIキーを確認してください）: {e}",
+        )
+    except anthropic.PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=f"Anthropic API 権限エラー: {e}")
+    except anthropic.RateLimitError as e:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Anthropic API レート制限に達しました。少し時間を空けて再試行してください: {e}",
+        )
+    except anthropic.APIStatusError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Anthropic API エラー (status={e.status_code}): {e}",
+        )
+    except json.JSONDecodeError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"LLM出力のJSON解析に失敗しました（出力切断またはフォーマット異常）: {e}",
+        )
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"推論チェーン生成エラー: {e}")
 
@@ -293,6 +327,29 @@ async def analyze_stream(event: str):
             done = json.dumps({"type": "done"}, ensure_ascii=False)
             yield f"data: {done}\n\n"
 
+        except anthropic.BadRequestError as e:
+            msg = str(e)
+            if "credit balance is too low" in msg.lower():
+                friendly = (
+                    "Anthropic API のクレジット残高が不足しています。"
+                    "https://console.anthropic.com/settings/billing で残高を追加してください。"
+                )
+            else:
+                friendly = f"Anthropic API リクエストエラー: {msg}"
+            error = json.dumps({"type": "error", "message": friendly}, ensure_ascii=False)
+            yield f"data: {error}\n\n"
+        except anthropic.AuthenticationError as e:
+            error = json.dumps(
+                {"type": "error", "message": f"Anthropic API 認証エラー: {e}"},
+                ensure_ascii=False,
+            )
+            yield f"data: {error}\n\n"
+        except anthropic.RateLimitError as e:
+            error = json.dumps(
+                {"type": "error", "message": f"Anthropic API レート制限: {e}"},
+                ensure_ascii=False,
+            )
+            yield f"data: {error}\n\n"
         except Exception as e:
             error = json.dumps({"type": "error", "message": str(e)}, ensure_ascii=False)
             yield f"data: {error}\n\n"
